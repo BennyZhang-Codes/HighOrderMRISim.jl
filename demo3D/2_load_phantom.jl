@@ -1,24 +1,34 @@
+# ------------------------------------------------------------
+# 1. Phantom generation and coil/B0 configuration
+# ------------------------------------------------------------
 brainphantom = BrainPhantom(prefix="brain3D", x=0.5, y=0.5, z=0.5)
-target_res   = ( 1.,  1., 1.).*1e-3     # target resolution
-target_matrix= (180, 180, 80)           # target matrix size
-location     = ( 0.,  0., 20.).*1e-3     # target location of the sampling center
-offcenter    = ( 0.,  0., 0.).*1e-3     # offcenter shift
 
-b0_type      = :real
-csm_type     = :real_32cha 
-csm_nCoil    = 32
-verbose      = false    
+target_res    = (1., 1., 1.) .* 1e-3        # voxel resolution [m]
+target_matrix = (180, 180, 80)              # image matrix size
+location      = (0., 0., 20.) .* 1e-3       # center location of the sampled volume [m]
+offcenter     = (0., 0., 0.) .* 1e-3        # off-center shift [m]
 
+b0_type   = :real              # static field (B0) type
+csm_type  = :real_32cha        # coil sensitivity map type
+csm_nCoil = 32                 # number of coils
+verbose   = false              # suppress console messages
+
+# Generate high-order brain phantom object
 obj = hophantom_brain(brainphantom, target_res, target_matrix, location, offcenter;
             b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
 
-# plt_phantom(obj, :ρ;)
-# plt_phantom(obj, :csm_mag)
-# plt_phantom(obj, :Δw)
+# Optional visualization:
+# plt_phantom(obj, :ρ)         # proton density
+# plt_phantom(obj, :csm_mag)   # coil sensitivity magnitude
+# plt_phantom(obj, :Δw)        # B0 inhomogeneity map
 
+# ------------------------------------------------------------
+# 2. Enable or disable specific physical effects (B0, T2)
+# ------------------------------------------------------------
 B0 = true    # turn on B0
 T2 = true    # turn on T2
 
-obj.Δw .= B0 ? obj.Δw : obj.Δw * 0;     # set Δw to 0 if B0=false
-obj.T2 .= T2 ? obj.T2 : obj.T2 * Inf;   # cancel T2 relaxiation
+# Apply toggles: zero Δw if B0 is off, or make T2 infinite (no decay) if T2 is off
+obj.Δw .= B0 ? obj.Δw : obj.Δw * 0;     
+obj.T2 .= T2 ? obj.T2 : obj.T2 * Inf;   
 

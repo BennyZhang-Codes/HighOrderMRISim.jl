@@ -2,11 +2,16 @@ using HighOrderMRISim
 using PyPlot; PyPlot.pygui(true)
 using MAT
 
+T = Float32
+
+# ------------------------------------------------------------
+# 1. Load the base sequence and initialize parameters
+# ------------------------------------------------------------
 path = "demo3D";
 name = "Spiral_2p0x2p0x2p0_100x100x35_1x4_int1_9p5ms_tr500_te5p0";
 
 seq = read_seq("$(path)/$(name).seq")
-seq.GR[1,:] = -seq.GR[1,:]
+seq.GR[1,:] = -seq.GR[1,:]  # invert Gx
 
 hoseq = HO_Sequence(seq);
 
@@ -17,11 +22,16 @@ dur_adc        = nSample_adc*dt_adc;
 gradRasterTime = 10e-6;
 nGrad_adc      = Int64(round(dur_adc/gradRasterTime));
 
-skope = matread("$(path)/$(name)_skope.mat")
-g_skope = skope["g_skope"] * 1e-3; # in T/m
-t_g     = vec(skope["t_g"]);
+# ------------------------------------------------------------
+# 2. Load measured trajectories (by Skope)
+# ------------------------------------------------------------
+skope   = matread("$(path)/$(name)_skope.mat")
+g_skope = T.(skope["g_skope"] * 1e-3); # T
+t_g     = T.(vec(skope["t_g"])); # [s]
 
-
+# ------------------------------------------------------------
+# 3. Replace nominal gradients with measured gradients
+# ------------------------------------------------------------
 nBlock = size(seq.GR, 2)
 iadc = 1;
 for iblock = 1:nBlock
@@ -56,5 +66,20 @@ for iblock = 1:nBlock
         hoseq.GR_dfc[2:4, iblock]  = deepcopy(hoseq.SEQ.GR[1:3, iblock]); 
     end
 end
+
+# ------------------------------------------------------------
+# 4. Invert ADC phase for RF phase compensation
+# ------------------------------------------------------------
+nBlock = size(seq.GR, 2)
+iadc = 1;
+for iblock = 1:nBlock
+    if is_ADC_on(seq[iblock])
+        seq[iblock].ADC[1].ϕ = -seq[iblock].ADC[1].ϕ
+    end
+end
+
+# ------------------------------------------------------------
+# 5. Plot the final sequence
+# ------------------------------------------------------------
 plt_seq(hoseq)
 plot_seq(hoseq.SEQ)
