@@ -2,8 +2,7 @@
 # 1. Define Bloch simulation method (BlochHighOrder)
 # ------------------------------------------------------------
 BHO = BlochHighOrder("1111", true, true)            
-# Alternative: use only nominal Gx, Gy, Gz without high-order terms
-# BHO = BlochHighOrder("0000", true, true)
+# Alternative: BHO = BlochHighOrder("0000", true, true), use only nominal Gx, Gy, Gz
 
 # ------------------------------------------------------------
 # 2. Initialize scanner system and simulation parameters
@@ -55,6 +54,8 @@ csm = hophantom_brain(brainphantom, :csm, target_res, target_matrix, location, o
 ρ   = hophantom_brain(brainphantom, :ρ  , target_res, target_matrix, location, offcenter; 
         b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
 
+mask = hophantom_brain(brainphantom, :headmask, target_res, target_matrix, location, offcenter; b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
+
 xyz_grid = hophantom_brain(brainphantom, :grid, target_res, target_matrix, location, offcenter; 
         b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
 
@@ -78,6 +79,7 @@ data = Dict(
     "dt_adc"       => dt_adc,
     "nSample_adc"  => nSample_adc,
     "ref"          => ρ,
+    "mask"         => mask,
     "b0"           => b0,
     "csm"          => csm,
     "xyz_grid"     => xyz_grid,

@@ -1,7 +1,7 @@
 # ============================================================
 # High-Order MRI Reconstruction Script (3D Spiral)
 # ------------------------------------------------------------
-# Requires: HighOrderMRI.jl (dev_jinyuan branch: https://github.com/BennyZhang-Codes/HighOrderMRI.jl/tree/dev_jinyuan)
+# Requires: HighOrderMRI.jl
 # Run HighOrderMRI.jl and HighOrderMRISim.jl in separate environments
 # ============================================================
 
@@ -17,11 +17,32 @@ using MRIReco   # v0.9.0 required by HighOrderMRI.jl
 
 using RegularizedLeastSquares
 using MAT
-using PyPlot
-pygui(true)
-
+using PyPlot; pygui(true)
 using CUDA
-CUDA.device!(0)
+
+"""
+    expand_mask(mask::Array{Int,3}, n::Int)
+
+Expand a 3D binary mask by `n` voxels in all directions.
+"""
+function expand_mask(mask::Array{Int,3}, n::Int)
+    sz = size(mask)
+    expanded = copy(mask)
+
+    inds = findall(mask .> 0)
+
+    for I in inds
+        x, y, z = Tuple(I)
+
+        x1, x2 = max(1, x - n), min(sz[1], x + n)
+        y1, y2 = max(1, y - n), min(sz[2], y + n)
+        z1, z2 = max(1, z - n), min(sz[3], z + n)
+        @inbounds expanded[x1:x2, y1:y2, z1:z2] .= 1
+    end
+
+    return expanded
+end
+
 
 T = Float32;
 
@@ -37,6 +58,7 @@ kdata    = data["signal"];
 kspha    = -data["kspha"];
 csm      = data["csm"];
 b0       = -data["b0"] ./ 2π;
+mask     = data["mask"];
 datatime = data["t_adc"];
 xyz      = data["xyz_grid"]
 
@@ -70,6 +92,7 @@ weight   = SampleDensity(kspha[:, 2:4]', (nX, nY, nZ));
 # 4. High-Order Reconstruction 
 # ------------------------------------------------------------
 recon_terms = "1111"
+gpus    = [0,1,2,3,4,5,6,7]
 use_gpu = true
 verbose = true
 
@@ -81,8 +104,11 @@ recParams[:solver]      = CGNR
 
 # Create high-order operator
 HOOp = HighOrderOp3D_Kernel(gridding, T.(kspha'), T.(datatime); 
-        recon_terms=recon_terms, csm=Complex{T}.(permutedims(csm, [2,1,3,4])), 
-        fieldmap=T.(permutedims(b0, [2,1,3])), use_gpu=use_gpu, verbose=verbose);
+        recon_terms=recon_terms, 
+        csm=Complex{T}.(permutedims(csm, [2,1,3,4])), 
+        fieldmap=T.(permutedims(b0, [2,1,3])), 
+        mask=BitArray(permutedims(expand_mask(mask, 4), [2,1,3])),
+        gpus=gpus, use_gpu=use_gpu, verbose=verbose);
 
 # Run reconstruction
 @time x = recon_HOOp(HOOp, Complex{T}.(kdata), Complex{T}.(weight), recParams);
