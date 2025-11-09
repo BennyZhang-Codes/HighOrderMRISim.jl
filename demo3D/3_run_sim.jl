@@ -46,18 +46,19 @@ target_matrix = Tuple(Int64.(params["params"]["MatrixSize"]))
 target_res    = target_fov ./ target_matrix
 
 b0  = hophantom_brain(brainphantom, :Δw , target_res, target_matrix, location, offcenter; 
-        b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
+        fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
 
 csm = hophantom_brain(brainphantom, :csm, target_res, target_matrix, location, offcenter; 
-        b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
+        fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
 
 ρ   = hophantom_brain(brainphantom, :ρ  , target_res, target_matrix, location, offcenter; 
-        b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
+        fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
 
-mask = hophantom_brain(brainphantom, :headmask, target_res, target_matrix, location, offcenter; b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
+mask = hophantom_brain(brainphantom, :headmask, target_res, target_matrix, location, offcenter; 
+        fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
 
 xyz_grid = hophantom_brain(brainphantom, :grid, target_res, target_matrix, location, offcenter; 
-        b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
+        fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
 
 # Optional plotting for sanity check:
 # plt_image(rotl90(mosaic(ρ; dim=3, nRow=5, nCol=7)))

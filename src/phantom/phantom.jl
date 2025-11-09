@@ -3,7 +3,7 @@ include("PhantomType.jl")
 export BrainPhantom
 
 include("SpinProperty.jl")
-export SpinProperty_1p5T
+export SpinProperty
 
 include("load_phantom_mat.jl")
 export load_phantom_mat

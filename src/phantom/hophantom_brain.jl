@@ -6,10 +6,11 @@ function hophantom_brain(
     location      :: Tuple{T,T,T}             , # target location of the sampling center
     offcenter     :: Tuple{T,T,T}             ; # offcenter shift of the grid
 
-    b0_type   :: Symbol         = :fat        , # load B0 map
-    csm_type  :: Symbol         = :real_32cha , # coil type
-    csm_nCoil :: Int64          = 32          ,  
-    verbose   :: Bool           = false       ,
+    fieldstrength :: String     = "1.5T"      , # set spin property according to field strength
+    b0_type       :: Symbol     = :fat        , # load B0 map
+    csm_type      :: Symbol     = :real_32cha , # coil type
+    csm_nCoil     :: Int64      = 32          ,  
+    verbose       :: Bool       = false       ,
 ) :: HO_Phantom where {T <: AbstractFloat, D <: Integer}
 
     class = load_phantom_mat(objbrain, target_res, target_matrix, location)
@@ -24,7 +25,7 @@ function hophantom_brain(
     z = xyz[:, :, :, 3] .+ offcenter[3]; 
 
     # Define spin property vectors
-    T1, T2, T2s, ρ = SpinProperty_1p5T(class)
+    T1, T2, T2s, ρ = SpinProperty(class, fieldstrength)
 
     # Define B0map vectors
     if b0_type == :fat
@@ -66,10 +67,11 @@ function hophantom_brain(
     location      :: Tuple{T,T,T}             , # target location of the sampling center
     offcenter     :: Tuple{T,T,T}             ; # offcenter shift of the grid
 
-    b0_type   :: Symbol         = :fat        , # load B0 map
-    csm_type  :: Symbol         = :real_32cha , # coil type
-    csm_nCoil :: Int64          = 32          ,  
-    verbose   :: Bool           = false       ,
+    fieldstrength :: String     = "1.5T"      , # set spin property according to field strength
+    b0_type       :: Symbol     = :fat        , # load B0 map
+    csm_type      :: Symbol     = :real_32cha , # coil type
+    csm_nCoil     :: Int64      = 32          ,  
+    verbose       :: Bool       = false       ,
 ) ::AbstractArray where {T <: AbstractFloat, D <: Integer}
     @assert key in [:ρ, :T2, :T2s, :T1, :class, :headmask, :brainmask, :Δw, :csm, :grid] "key must be ρ, T2, T2s, T1, Δw, raw, headmask or brainmask"
 
@@ -84,7 +86,7 @@ function hophantom_brain(
 
     class = load_phantom_mat(objbrain, target_res, target_matrix, location)
     # Define spin property vectors
-    T1, T2, T2s, ρ = SpinProperty_1p5T(class)
+    T1, T2, T2s, ρ = SpinProperty(class, fieldstrength)
 
     if key == :ρ
         img = ρ

@@ -65,6 +65,7 @@ target_res   = (0.5, 0.5, 2.).*1e-3     # target resolution
 target_matrix= (400, 400,  1)           # target matrix size
 location     = ( 0.,  0., 0.).*1e-3     # target location of the sampling center
 offcenter    = ( 0.,  0., 0.).*1e-3     # offcenter shift
+fieldstrength= "1.5T"
 b0_type      = :real
 csm_type     = :real_32cha 
 csm_nCoil    = 32
@@ -72,7 +73,7 @@ verbose      = false
 
 # 1. phantom
 obj = hophantom_brain(brainphantom, target_res, target_matrix, location, offcenter; 
-            b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
+            fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
 obj.Δw .= B0 ? obj.Δw : obj.Δw * 0;     # set Δw to 0 if B0=false
 obj.T2 .= T2 ? obj.T2 : obj.T2 * Inf;   # cancel T2 relaxiation
 plt_phantom(obj, :ρ)
@@ -103,14 +104,17 @@ target_fov    = (200e-3, 200e-3, 2e-3)
 target_matrix = (200, 200, 1)
 target_res    = target_fov ./ target_matrix
 
-b0 = hophantom_brain(brainphantom, :Δw, target_res, target_matrix, location, offcenter; b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
+b0 = hophantom_brain(brainphantom, :Δw, target_res, target_matrix, location, offcenter; 
+        fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
 plt_image(rotl90(b0[:,:]))
 
-csm = hophantom_brain(brainphantom, :csm, target_res, target_matrix, location, offcenter; b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
+csm = hophantom_brain(brainphantom, :csm, target_res, target_matrix, location, offcenter;
+        fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
 plt_image(rotl90(abs.(csm)[:,:, 1,1]))
 
 # get spin-density map
-ρ = hophantom_brain(brainphantom, :ρ, target_res, target_matrix, location, offcenter; b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
+ρ = hophantom_brain(brainphantom, :ρ, target_res, target_matrix, location, offcenter; 
+        fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
 plt_image(rotl90(ρ[:,:]))
 
 # get nominal k-space trajectory
