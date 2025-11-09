@@ -67,7 +67,7 @@ function SpinProperty_7T(class::Array)
     # GM, WM are updated to 7T
     # TODO: update other tissues if possible
     # Define spin property vectors
-    T2 = (class.==23 )*1000 .+ #CSF  
+    T2 = (class.==23 )*329 .+ #CSF  
         (class.==46 )*50  .+ #GM   
         (class.==70 )*40  .+ #WM   
         (class.==93 )*46  .+ #FAT1
