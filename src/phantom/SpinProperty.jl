@@ -76,7 +76,7 @@ function SpinProperty_7T(class::Array)
         (class.==162)*0   .+ #SKULL
         (class.==185)*0   .+ #VESSELS
         (class.==209)*40  .+ #FAT2
-        (class.==232)*1000 .+ #DURA
+        (class.==232)*329 .+ #DURA
         (class.==255)*40     #MARROW
     T2s =(class.==23 )*700  .+ #CSF
         (class.==46 )*33  .+ #GM    
