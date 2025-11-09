@@ -67,39 +67,39 @@ function SpinProperty_7T(class::Array)
     # GM, WM are updated to 7T
     # TODO: update other tissues if possible
     # Define spin property vectors
-    T2 = (class.==23 )*329 .+ #CSF  
-        (class.==46 )*50  .+ #GM   50
-        (class.==70 )*40  .+ #WM   40
-        (class.==93 )*70  .+ #FAT1
-        (class.==116)*47  .+ #MUSCLE
-        (class.==139)*329 .+ #SKIN/MUSCLE
-        (class.==162)*0   .+ #SKULL
-        (class.==185)*0   .+ #VESSELS
-        (class.==209)*70  .+ #FAT2
-        (class.==232)*329 .+ #DURA
-        (class.==255)*70     #MARROW
-    T2s =(class.==23 )*58  .+ #CSF
-        (class.==46 )*33  .+ #GM    33
-        (class.==70 )*27  .+ #WM    27
-        (class.==93 )*58  .+ #FAT1
+    T2 = (class.==23 )*1000 .+ #CSF  
+        (class.==46 )*50  .+ #GM   
+        (class.==70 )*40  .+ #WM   
+        (class.==93 )*46  .+ #FAT1
         (class.==116)*30  .+ #MUSCLE
-        (class.==139)*58  .+ #SKIN/MUSCLE
+        (class.==139)*30 .+ #SKIN/MUSCLE
         (class.==162)*0   .+ #SKULL
         (class.==185)*0   .+ #VESSELS
-        (class.==209)*61  .+ #FAT2
-        (class.==232)*58  .+ #DURA
-        (class.==255)*61     #MARROW
-    T1 = (class.==23 )*2569 .+ #CSF 
-        (class.==46 )*2100 .+ #GM  2100
-        (class.==70 )*1200 .+ #WM  1200
-        (class.==93 )*350 .+ #FAT1
-        (class.==116)*900 .+ #MUSCLE
-        (class.==139)*569 .+ #SKIN/MUSCLE
+        (class.==209)*40  .+ #FAT2
+        (class.==232)*1000 .+ #DURA
+        (class.==255)*40     #MARROW
+    T2s =(class.==23 )*700  .+ #CSF
+        (class.==46 )*33  .+ #GM    
+        (class.==70 )*27  .+ #WM    
+        (class.==93 )*25  .+ #FAT1
+        (class.==116)*23  .+ #MUSCLE
+        (class.==139)*23  .+ #SKIN/MUSCLE
         (class.==162)*0   .+ #SKULL
         (class.==185)*0   .+ #VESSELS
-        (class.==209)*500 .+ #FAT2
-        (class.==232)*2569 .+ #DURA
-        (class.==255)*500    #MARROW
+        (class.==209)*27  .+ #FAT2
+        (class.==232)*700  .+ #DURA
+        (class.==255)*27     #MARROW
+    T1 = (class.==23 )*4400 .+ #CSF 
+        (class.==46 )*2100 .+ #GM  
+        (class.==70 )*1200 .+ #WM  
+        (class.==93 )*580 .+ #FAT1
+        (class.==116)*1700 .+ #MUSCLE
+        (class.==139)*1700 .+ #SKIN/MUSCLE
+        (class.==162)*0   .+ #SKULL
+        (class.==185)*0   .+ #VESSELS
+        (class.==209)*1200 .+ #FAT2
+        (class.==232)*4400 .+ #DURA
+        (class.==255)*1200    #MARROW
     ρ =  (class.==23 )*1   .+ #CSF
         (class.==46 )*.86 .+ #GM
         (class.==70 )*.77 .+ #WM
