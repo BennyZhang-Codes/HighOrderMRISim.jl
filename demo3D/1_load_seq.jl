@@ -1,13 +1,16 @@
 using HighOrderMRISim
-using PyPlot; PyPlot.pygui(true)
+using PyPlot
 using MAT
+
+demo_plots = get(ENV, "HIGHORDERMRISIM_DEMO_PLOTS", "true") == "true"
+demo_plots && PyPlot.pygui(true)
 
 T = Float32
 
 # ------------------------------------------------------------
 # 1. Load the base sequence and initialize parameters
 # ------------------------------------------------------------
-path = "demo3D";
+path = @__DIR__;
 name = "Spiral_2p0x2p0x2p0_100x100x35_1x4_int1_9p5ms_tr500_te5p0";
 
 seq = read_seq("$(path)/$(name).seq")
@@ -40,28 +43,31 @@ for iblock = 1:nBlock
 
         nGrad_Gz_pre  = 34;
         nGrad_Spoiler = 300;
-        nGrad_adc     = Int64(round(dur_adc/gradRasterTime));
         nGrad_delay   = Int64(round(seq.GR[1, iblock].delay/gradRasterTime));
     
         for i = 1:16
             if i == 4
-                hoseq.GR_dfc[i, iblock-1].T    = (nGrad_Gz_pre-1)*gradRasterTime;
-                hoseq.GR_dfc[i, iblock-1].A    = g[1:nGrad_Gz_pre, i];
-                hoseq.GR_dfc[i, iblock-1].rise = gradRasterTime/2;
-                hoseq.GR_dfc[i, iblock-1].fall = gradRasterTime/2;
+                previous = hoseq.GR_dfc[i, iblock-1]
+                hoseq.GR_dfc[i, iblock-1] = Grad(
+                    g[1:nGrad_Gz_pre, i], (nGrad_Gz_pre-1)*gradRasterTime,
+                    gradRasterTime/2, gradRasterTime/2, previous.delay,
+                )
             end
 
-            hoseq.GR_dfc[i, iblock].T     = (nGrad_adc-1)*gradRasterTime;
-            hoseq.GR_dfc[i, iblock].delay = nGrad_delay*gradRasterTime;
-            hoseq.GR_dfc[i, iblock].A     = g[nGrad_Gz_pre+nGrad_delay+1:end, i];
-            hoseq.GR_dfc[i, iblock].rise  = gradRasterTime/2;
-            hoseq.GR_dfc[i, iblock].fall  = gradRasterTime/2;
+            amplitude = g[nGrad_Gz_pre+nGrad_delay+1:end, i]
+            duration = (nGrad_adc-1)*gradRasterTime
             if i == 2 || i == 3
-                hoseq.GR_dfc[i, iblock].T = (nGrad_adc+nGrad_Spoiler-1)*gradRasterTime;
-                hoseq.GR_dfc[i, iblock].A = [g[nGrad_Gz_pre+nGrad_delay+1:end, i]; seq.GR[i-1, iblock].A[end-nGrad_Spoiler+1:end]]
+                duration = (nGrad_adc+nGrad_Spoiler-1)*gradRasterTime
+                amplitude = [amplitude; seq.GR[i-1, iblock].A[end-nGrad_Spoiler+1:end]]
             end
+            # Grad now records amplitude storage in its type. Replace the event
+            # instead of assigning a waveform vector to a scalar-amplitude Grad.
+            hoseq.GR_dfc[i, iblock] = Grad(
+                amplitude, duration, gradRasterTime/2, gradRasterTime/2,
+                nGrad_delay*gradRasterTime,
+            )
         end
-        iadc += 1
+        global iadc += 1
     else
         hoseq.GR_dfc[2:4, iblock]  = deepcopy(hoseq.SEQ.GR[1:3, iblock]); 
     end
@@ -71,7 +77,6 @@ end
 # 4. Invert ADC phase for RF phase compensation
 # ------------------------------------------------------------
 nBlock = size(seq.GR, 2)
-iadc = 1;
 for iblock = 1:nBlock
     if is_ADC_on(seq[iblock])
         seq[iblock].ADC[1].ϕ = -seq[iblock].ADC[1].ϕ
@@ -81,5 +86,5 @@ end
 # ------------------------------------------------------------
 # 5. Plot the final sequence
 # ------------------------------------------------------------
-plt_seq(hoseq)
-plot_seq(hoseq.SEQ)
+demo_plots && plt_seq(hoseq)
+demo_plots && plot_seq(hoseq.SEQ)

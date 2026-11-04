@@ -1,4 +1,6 @@
-
+function sim_output_dim(obj::HO_Phantom, seq::Sequence, sys::Scanner, ::Bloch)
+    return (sum(seq.ADC.N), 1)
+end
 
 """
     run_spin_precession(obj, hoseqd, Xt, sig)
@@ -26,7 +28,7 @@ function run_spin_precession!(p::HO_Phantom{T}, hoseqd::HO_DiscreteSequence{T}, 
     #Effective field
     Bz = xt .* seq.Gx' .+ yt .* seq.Gy' .+ zt .* seq.Gz' .+ p.Δw / T(2π * γ)
     #Rotation
-    if is_ADC_on(seq)
+    if !isempty(sig)
         ϕ = T(-2π * γ) .* cumtrapz(seq.Δt', Bz)
     else
         ϕ = T(-2π * γ) .* trapz(seq.Δt', Bz)
@@ -38,7 +40,10 @@ function run_spin_precession!(p::HO_Phantom{T}, hoseqd::HO_DiscreteSequence{T}, 
     M.xy .= Mxy[:, end]
     M.z  .= M.z .* exp.(-dur ./ p.T1) .+ p.ρ .* (1 .- exp.(-dur ./ p.T1))
     #Acquired signal
-    sig .= transpose(sum(Mxy[:, findall(seq.ADC)]; dims=1)) #<--- TODO: add coil sensitivities
+    if !isempty(sig)
+        adc_indices = findall(cpu(seq.ADC[2:end])) .+ 1
+        sig .= transpose(sum(Mxy[:, adc_indices]; dims=1))
+    end
     return nothing
 end
 
@@ -61,7 +66,10 @@ function run_spin_excitation!(p::HO_Phantom{T}, hoseqd::HO_DiscreteSequence{T}, 
     M::Mag{T}, sim_method::Bloch) where {T<:Real}
     seq = hoseqd.seqd
     #Simulation
-    for s ∈ seq #This iterates over seq, "s = seq[i,:]"
+    M.xy .*= cis.(-seq.ψ[1:1])
+    adc = cpu(seq.ADC)
+    sample = 1
+    for (i, s) in enumerate(seq)
         #Motion
         xt = p.x .+ p.ux(p.x, p.y, p.z, s.t)
         yt = p.y .+ p.uy(p.x, p.y, p.z, s.t)
@@ -77,8 +85,12 @@ function run_spin_excitation!(p::HO_Phantom{T}, hoseqd::HO_DiscreteSequence{T}, 
         #Relaxation
         M.xy .= M.xy .* exp.(-s.Δt ./ p.T2)
         M.z  .= M.z  .* exp.(-s.Δt ./ p.T1) .+ p.ρ .* (1 .- exp.(-s.Δt ./ p.T1))
+        if adc[i+1]
+            Mxy = M.xy .* cis.(seq.ψ[i+1:i+1])
+            sig[sample:sample, :] .= sum(Mxy)
+            sample += 1
+        end
     end
-    #Acquired signal
-    #sig .= -1.4im #<-- This was to test if an ADC point was inside an RF block
+    M.xy .*= cis.(seq.ψ[end:end])
     return nothing
 end

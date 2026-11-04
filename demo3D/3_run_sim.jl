@@ -1,7 +1,7 @@
 # ------------------------------------------------------------
 # 1. Define Bloch simulation method (BlochHighOrder)
 # ------------------------------------------------------------
-BHO = BlochHighOrder("1111", true, true)            
+BHO = BlochHighOrder(get(ENV, "HIGHORDERMRISIM_DEMO_ORDERS", "1111"), true, true)
 # Alternative: BHO = BlochHighOrder("0000", true, true), use only nominal Gx, Gy, Gz
 
 # ------------------------------------------------------------
@@ -16,16 +16,20 @@ sim_params["precision"]   = "f32"    # single-precision computation
 sim_params["gpu"]         = true     # enable GPU acceleration
 sim_params["gpu_device"]  = 0        # select GPU device ID
 sim_params["Nblocks"]     = 2000     # number of blocks for GPU simulation (memory dependent)
+if haskey(ENV, "HIGHORDERMRISIM_DEMO_MAX_BLOCK_LENGTH")
+    sim_params["max_block_length"] = parse(Int, ENV["HIGHORDERMRISIM_DEMO_MAX_BLOCK_LENGTH"])
+end
 
 # ------------------------------------------------------------
 # 3. Run the signal simulation
 # ------------------------------------------------------------
 signal    = simulate(obj, hoseq, sys; sim_params);          
 
+if get(ENV, "HIGHORDERMRISIM_DEMO_SIMULATION_ONLY", "false") != "true"
 # Reshape
 reshape(signal, nSample_adc, :, csm_nCoil);  # [nSample_adc, nADC, nCoil]
 
-fig = plt_plot([abs.(signal[:, 1])]; width=30, height=5, fontsize_label=6, ylabel="Signal Amplitude [a.u.]", xlabel="ADC Sample")
+demo_plots && plt_plot([abs.(signal[:, 1])]; width=30, height=5, fontsize_label=6, ylabel="Signal Amplitude [a.u.]", xlabel="ADC Sample")
 # fig.savefig("$(path)/out/signal.png", dpi=300, transparent=true, bbox_inches="tight", pad_inches=0.0)
 
 
@@ -91,3 +95,4 @@ data = Dict(
 
 # Save results for later reconstruction
 matwrite("$(path)/$(name)_1111_wB0.mat", data)
+end # optional reconstruction-data preparation

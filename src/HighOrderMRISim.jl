@@ -26,7 +26,8 @@ import ImageTransformations: imresize
 @reexport import MAT
 
 @reexport using KomaMRI
-import KomaMRI.KomaMRICore: SimulationMethod, SpinStateRepresentation
+import KomaMRIBase, KomaMRICore
+import KomaMRICore: SimulationMethod, SpinStateRepresentation
 import Functors: @functor
 
 
@@ -40,7 +41,6 @@ include("simulation/simulation.jl")
 include("plot/plot.jl")
 
 #Package version
-using Pkg
-__VERSION__ = VersionNumber(Pkg.TOML.parsefile(joinpath(@__DIR__, "..", "Project.toml"))["version"])
+const __VERSION__ = pkgversion(@__MODULE__)
 
 end # module HighOrderMRISim

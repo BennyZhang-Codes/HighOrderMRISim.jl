@@ -1,6 +1,9 @@
 using HighOrderMRISim
 using Test
 
+@info "testing... KomaMRI compatibility"
+include("test_koma_compatibility.jl")
+
 @info "testing... csm"
 include("test_csm.jl")
 

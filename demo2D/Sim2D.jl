@@ -1,5 +1,8 @@
 using HighOrderMRISim, MRIReco, MAT
-import RegularizedLeastSquares: SolverInfo
+
+# Set these flags for headless, simulation-only validation without reconstruction.
+demo_plots = get(ENV, "HIGHORDERMRISIM_DEMO_PLOTS", "true") == "true"
+simulation_only = get(ENV, "HIGHORDERMRISIM_DEMO_SIMULATION_ONLY", "false") == "true"
 
 #########################################################################################
 # 1. Load sequence and dynamic field data
@@ -36,7 +39,7 @@ bfieldMeasured = bfieldMeasured' * 1e-3;
 
 # 1. read the *.seq file
 seq = read_seq(seq_file)[3:end-3]; # read_seq function from KomaMRI.jl, return a struct of Sequence
-HighOrderMRISim.KomaMRI.plot_seq(seq) # plot_seq function from KomaMRI.jl, plot the Sequence
+demo_plots && HighOrderMRISim.KomaMRI.plot_seq(seq)
 
 t = dt_adc * (nSample-1);
 GR_dfcMeasured = reshape([KomaMRIBase.Grad(bfieldMeasured[idx,:], t, dt_adc/2, dt_adc/2, 0) for idx=1:nTerm], :, 1);
@@ -45,7 +48,7 @@ hoseqMeasured = HO_Sequence(seq);
 # copy the 1st-order nominal gradient data from the seq object to the hoseq object
 hoseqMeasured.GR_dfc[2:4, :] = hoseqMeasured.SEQ.GR;    
 hoseqMeasured.GR_dfc[:,5] = GR_dfcMeasured;   # "5" is the index of the readout block in the spiral sequence     
-plt_seq(hoseqMeasured)
+demo_plots && plt_seq(hoseqMeasured)
 
 #########################################################################################
 # 2. Simulation with dynamic field changes
@@ -59,7 +62,7 @@ nX = nY = 200; nZ = 1;  # matrix size for recon
 B0 = false    # turn on B0
 T2 = false    # turn off T2
 
-BHO          = BlochHighOrder("0000", true, true)  # ["0000"] just using nominal gradients. turn on Δw_excitation, Δw_precession
+BHO          = BlochHighOrder(get(ENV, "HIGHORDERMRISIM_DEMO_ORDERS", "0000"), true, true)
 brainphantom = BrainPhantom(prefix="brain3D", x=0.5, y=0.5, z=0.5) # setting for Phantom: decide which phantom file to use, loading phantom from src/phantom/mat folder                                
 target_res   = (0.5, 0.5, 2.).*1e-3     # target resolution
 target_matrix= (400, 400,  1)           # target matrix size
@@ -76,7 +79,7 @@ obj = hophantom_brain(brainphantom, target_res, target_matrix, location, offcent
             fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
 obj.Δw .= B0 ? obj.Δw : obj.Δw * 0;     # set Δw to 0 if B0=false
 obj.T2 .= T2 ? obj.T2 : obj.T2 * Inf;   # cancel T2 relaxiation
-plt_phantom(obj, :ρ)
+demo_plots && plt_phantom(obj, :ρ)
 
 # 2. scanner & sim_params
 sys = Scanner();
@@ -87,10 +90,14 @@ sim_params["precision"]   = "f64";
 sim_params["gpu"]         = true;     # using GPU for simulation
 sim_params["gpu_device"]  = 0;        # set the GPU device number, if using GPU for simulation
 sim_params["Nblocks"]     = 2000;     # the number of blocks for GPU simulation, set according to the GPU memory
+if haskey(ENV, "HIGHORDERMRISIM_DEMO_MAX_BLOCK_LENGTH")
+    sim_params["max_block_length"] = parse(Int, ENV["HIGHORDERMRISIM_DEMO_MAX_BLOCK_LENGTH"])
+end
 
 # 3. simulate
 signal    = simulate(obj, hoseqMeasured, sys; sim_params);          
 
+if !simulation_only
 # 4. Adding noise to signal data
 snr       = 10;
 data      = AddNoise(signal[:,:,1], snr);
@@ -106,19 +113,19 @@ target_res    = target_fov ./ target_matrix
 
 b0 = hophantom_brain(brainphantom, :Δw, target_res, target_matrix, location, offcenter; 
         fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
-plt_image(rotl90(b0[:,:]))
+demo_plots && plt_image(rotl90(b0[:,:]))
 
 csm = hophantom_brain(brainphantom, :csm, target_res, target_matrix, location, offcenter;
         fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
-plt_image(rotl90(abs.(csm)[:,:, 1,1]))
+demo_plots && plt_image(rotl90(abs.(csm)[:,:, 1,1]))
 
 # get spin-density map
 ρ = hophantom_brain(brainphantom, :ρ, target_res, target_matrix, location, offcenter; 
         fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
-plt_image(rotl90(ρ[:,:]))
+demo_plots && plt_image(rotl90(ρ[:,:]))
 
 # get nominal k-space trajectory
-_, kspha_xyz = get_kspace(hoseqMeasured.SEQ; Δt=1);
+_, kspha_xyz = get_kspace(hoseqMeasured.SEQ; sampling_rule=MaxStepSizeRule(1, 5e-5));
 C = maximum(2*abs.(kspha_xyz[:]));  #Normalize k-space to -.5 to .5 for NUFFT
 
 # preparation for NUFFT reconstruction
@@ -141,8 +148,6 @@ params[:senseMaps] = Complex{T}.(reshape(csm, nX, nY, nZ, 32));
 
 @time Ireco = reconstruction(acqData, params);
 img = Ireco[:,:,1,1,1,1];
-fig = plt_image(rotl90(abs.(img)); vminp=0, vmaxp=99.0)
-
-
-
+demo_plots && plt_image(rotl90(abs.(img)); vminp=0, vmaxp=99.0)
+end # optional reconstruction
 
