@@ -1,16 +1,50 @@
 # Concrete arrays cross the kernel boundary; the public legacy containers stay
-# unchanged. Only ADC states are materialized for the existing multi-coil GEMM.
-struct HighOrderGPUWorkspace{A,C,B}
+# unchanged. Fused precession uses partial sums; its ADC/packed buffers only
+# need RF capacity. GEMM keeps full ADC capacity and remains the default.
+const HIGH_ORDER_COIL_COMBINATIONS = ("gemm", "reduction", "fused_warp", "fused_tiled")
+
+struct HighOrderGPUWorkspace{A,C,P,F,B}
     adc_states::A
     coil_signal::C
+    coil_partials::P
+    fusion::F
     backend::B
     groupsize::Int
 end
 
-function HighOrderGPUWorkspace(obj::HO_Phantom{T}, max_adc, backend; groupsize=256) where {T}
+function HighOrderGPUWorkspace(obj::HO_Phantom{T}, max_adc, backend;
+                               groupsize=256, coil_combination="gemm",
+                               adc_tile=8, coil_tile=1, max_rf_adc=max_adc) where {T}
+    max_adc isa Integer && max_adc >= 0 ||
+        throw(ArgumentError("The maximum ADC count must be a nonnegative integer."))
+    max_rf_adc isa Integer && 0 <= max_rf_adc <= max_adc ||
+        throw(ArgumentError("The RF ADC count must be an integer between zero and max_adc."))
+    coil_combination in HIGH_ORDER_COIL_COMBINATIONS ||
+        throw(ArgumentError("Unknown coil_combination: $coil_combination."))
+    fused = coil_combination in ("fused_warp", "fused_tiled")
+    !fused || (groupsize >= 32 && groupsize <= 1024 && groupsize % 32 == 0) ||
+        throw(ArgumentError("CUDA fused groupsize must be a multiple of 32, at most 1024."))
+    A, C = coil_combination == "fused_warp" ? (1, 1) : (adc_tile, coil_tile)
+    if fused
+        A isa Integer && C isa Integer && A in (1, 2, 4, 8) && C in (1, 2, 4) ||
+            throw(ArgumentError("Fused ADC/coil tiles must be selected from 1/2/4/8 and 1/2/4."))
+        A, C = Int(A), Int(C)
+        groupsize * A * sizeof(Complex{T}) <=
+            CUDA.attribute(CUDA.device(), CUDA.DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK) ||
+            throw(ArgumentError("The fused ADC tile exceeds the device shared-memory limit."))
+    end
+    buffer_adc = fused ? max_rf_adc : max_adc
+    states = similar(obj.x, Complex{T}, length(obj), buffer_adc)
+    partials = coil_combination == "reduction" ?
+        high_order_coil_partials(states, size(obj.csm, 2)) : nothing
+    fusion = fused ? (
+        partials=similar(obj.x, Complex{T}, cld(length(obj), groupsize), max_adc * size(obj.csm, 2)),
+        adc_tile=Val(A), coil_tile=Val(C),
+    ) : nothing
     return HighOrderGPUWorkspace(
-        similar(obj.x, Complex{T}, length(obj), max_adc),
-        similar(obj.x, Complex{T}, max_adc * size(obj.csm, 2)), backend, groupsize,
+        states, coil_combination != "reduction" ?
+            similar(obj.x, Complex{T}, buffer_adc * size(obj.csm, 2)) : nothing,
+        partials, fusion, backend, groupsize,
     )
 end
 
@@ -79,6 +113,10 @@ end
 end
 
 function run_high_order_precession!(workspace, obj, hoseqd, sig, M, method)
+    if !isnothing(workspace.fusion) && !isempty(sig)
+        run_fused_high_order_precession!(workspace, obj, hoseqd, sig, M, method)
+        return nothing
+    end
     seq = hoseqd.seqd
     coefficients = ntuple(i -> getfield(hoseqd, Symbol("h", i-1)), 16)
     orders = Val((method.ho0, method.ho1, method.ho2, method.ho3, method.Δw_precession))
@@ -95,6 +133,10 @@ end
 function combine_high_order_signal!(sig, workspace, csm)
     isempty(sig) && return nothing
     states = view(workspace.adc_states, :, 1:size(sig, 1))
+    if !isnothing(workspace.coil_partials)
+        reduce_high_order_signal!(sig, states, csm, workspace.coil_partials, workspace.backend)
+        return nothing
+    end
     # Keep GEMM output dense: a strided legacy signal view can select generic
     # GPU matmul instead of cuBLAS. Repack a reusable buffer, then copy once.
     output = reshape(view(workspace.coil_signal, 1:length(sig)), size(sig))

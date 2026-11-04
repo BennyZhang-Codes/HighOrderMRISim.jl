@@ -1,11 +1,11 @@
 # Standalone GPU regression test. Select the physical GPU before starting Julia:
-# CUDA_VISIBLE_DEVICES=<GPU UUID> julia --threads=4 test/test_gpu_compatibility.jl
+# CUDA_VISIBLE_DEVICES=<GPU UUID> julia --threads=4 test/gpu/test_gpu_compatibility.jl
 using Test
 using CUDA
 using HighOrderMRISim
 
 isdefined(@__MODULE__, :compatibility_sequence) ||
-    include("test_koma_compatibility.jl")
+    include(joinpath(@__DIR__, "..", "support", "compatibility_workload.jl"))
 
 CUDA.functional() || error("A functional CUDA device is required for this test.")
 CUDA.allowscalar(false)
@@ -13,8 +13,9 @@ CUDA.device!(0)
 println("GPU regression device: ", CUDA.name(CUDA.device()), " / ", CUDA.uuid(CUDA.device()))
 
 @testset "CUDA high-order compatibility" begin
-    for precision in ("f32", "f64"), orders in ("0000", "1000", "1111")
-        @testset "$precision / $orders" begin
+    for precision in ("f32", "f64"), orders in ("0000", "1000", "1111"),
+        coil_combination in HighOrderMRISim.HIGH_ORDER_COIL_COMBINATIONS
+        @testset "$precision / $orders / $coil_combination" begin
             seq = compatibility_sequence()
             hoseq = HO_Sequence(seq)
             for term in 1:16
@@ -33,6 +34,7 @@ println("GPU regression device: ", CUDA.name(CUDA.device()), " / ", CUDA.uuid(CU
             callback = function (_, _, data, actual_params)
                 @test actual_params["gpu"]
                 @test actual_params["implementation"] == "kernel"
+                @test actual_params["coil_combination"] == coil_combination
                 @test data.obj.x isa CUDA.CuArray
                 @test parent(data.sig) isa CUDA.CuArray
                 gpu_blocks[] += 1
@@ -40,7 +42,8 @@ println("GPU regression device: ", CUDA.name(CUDA.device()), " / ", CUDA.uuid(CU
             end
             signal = simulate(
                 obj, hoseq, Scanner(); verbose=false, callbacks=(callback,),
-                sim_params=merge(params, Dict("gpu" => true, "gpu_device" => 0)),
+                sim_params=merge(params, Dict("gpu" => true, "gpu_device" => 0,
+                                             "coil_combination" => coil_combination)),
             )
             tolerance = precision == "f32" ? 3e-5 : 1e-11
             @test signal ≈ reference atol=tolerance rtol=tolerance
@@ -72,13 +75,16 @@ end
                           sim_params=merge(params, Dict("max_block_length" => block_length)))
         @test signal ≈ reference atol=1e-11 rtol=1e-11
     end
-    for implementation in ("array", "kernel")
+    for (implementation, coil_combination) in (("array", "gemm"),
+        (("kernel", mode) for mode in HighOrderMRISim.HIGH_ORDER_COIL_COMBINATIONS)...)
         state = simulate(obj, hoseq, Scanner(); verbose=false,
                          sim_params=merge(params, Dict("implementation" => implementation,
+                                                       "coil_combination" => coil_combination,
                                                        "return_type" => "state")))
         @test state.xy ≈ im .* obj.ρ atol=1e-11
         raw = simulate(obj, hoseq, Scanner(); verbose=false,
                        sim_params=merge(params, Dict("implementation" => implementation,
+                                                     "coil_combination" => coil_combination,
                                                      "return_type" => "raw")))
         @test sum(size(profile.data, 1) for profile in raw.profiles) == 5
         @test all(size(profile.data, 2) == 2 for profile in raw.profiles)
@@ -87,8 +93,24 @@ end
         sim_params=merge(params, Dict("implementation" => "unknown")))
     @test_throws ArgumentError simulate(obj, hoseq, Scanner(); verbose=false,
         sim_params=merge(params, Dict("gpu" => false)))
+    @test_throws ArgumentError simulate(obj, hoseq, Scanner(); verbose=false,
+        sim_params=merge(params, Dict("coil_combination" => "unknown")))
+    @test_throws ArgumentError simulate(obj, hoseq, Scanner(); verbose=false,
+        sim_params=merge(params, Dict("coil_combination" => "reduction", "implementation" => "array")))
+    for mode in ("fused_warp", "fused_tiled")
+        @test_throws ArgumentError simulate(obj, hoseq, Scanner(); verbose=false,
+            sim_params=merge(params, Dict("coil_combination" => mode, "implementation" => "array")))
+        @test_throws ArgumentError simulate(obj, hoseq, Scanner(); verbose=false,
+            sim_params=merge(params, Dict("coil_combination" => mode, "implementation" => "auto", "gpu" => false)))
+    end
     obj.ux = (x, y, z, t) -> 0
     @test_throws ArgumentError simulate(obj, hoseq, Scanner(); sim_params=params, verbose=false)
+    @test_throws ArgumentError simulate(obj, hoseq, Scanner(); verbose=false,
+        sim_params=merge(params, Dict("implementation" => "auto", "coil_combination" => "reduction")))
+    for mode in ("fused_warp", "fused_tiled")
+        @test_throws ArgumentError simulate(obj, hoseq, Scanner(); verbose=false,
+            sim_params=merge(params, Dict("implementation" => "auto", "coil_combination" => mode)))
+    end
     paths = String[]
     callback = (_, _, _, actual) -> push!(paths, actual["implementation"])
     fallback = simulate(obj, hoseq, Scanner(); verbose=false, callbacks=(callback,),

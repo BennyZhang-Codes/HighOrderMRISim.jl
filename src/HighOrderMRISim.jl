@@ -29,7 +29,7 @@ import ImageTransformations: imresize
 import KomaMRIBase, KomaMRICore
 import KernelAbstractions
 import LinearAlgebra
-using KernelAbstractions: @kernel, @index
+using KernelAbstractions: @kernel, @index, @groupsize, @uniform, @localmem, @synchronize
 import KomaMRICore: SimulationMethod, SpinStateRepresentation
 import Functors: @functor
 

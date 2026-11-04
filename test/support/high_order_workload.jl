@@ -1,8 +1,8 @@
-# Deterministic block workload shared by profiling and kernel regression tests.
+# Deterministic inputs shared by GPU regression, validation, and performance tools.
 using HighOrderMRISim
 
 function high_order_workload(; nspins=32768, nsteps=32, ncoils=32, rf=false)
-    u = collect(range(-1.0, 1.0; length=nspins))
+    u = nspins == 1 ? [0.0] : collect(range(-1.0, 1.0; length=nspins))
     obj = HO_Phantom(
         x=0.08 .* u, y=0.06 .* sin.(3 .* u), z=0.04 .* cos.(5 .* u),
         ρ=0.8 .+ 0.2 .* cos.(u), T1=0.9 .+ 0.1 .* cos.(u),

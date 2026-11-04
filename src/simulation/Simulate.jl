@@ -16,6 +16,14 @@ gradients, matching the original package. `"implementation"` selects `"array"`,
 `"kernel"`, or `"auto"` (default). Auto uses the kernel for static CUDA high-order
 simulations and otherwise preserves the array path. An explicit kernel request
 errors if unsupported; it never silently discards motion or changes the model.
+For supported kernels, `"coil_combination"` selects `"gemm"` (default, packed
+cuBLAS), `"reduction"` (two-stage coil weighting and reduction), or experimental
+`"fused_warp"` (precession with subgroup coil reduction; RF retains GEMM).
+`"fused_tiled"` additionally reuses small ADC/coil tiles during precession.
+The fused choices size reusable ADC/packed buffers from the maximum RF ADC
+count, including zero capacity when RF has no acquisition. Callbacks and raw
+metadata report `"max_adc_per_block"`, `"max_rf_adc_per_block"`, and
+`"adc_state_buffer_samples"`; the caller's parameter dictionary is not changed.
 """
 function simulate(
     obj::HO_Phantom, hoseq::HO_Sequence, sys::Scanner;
@@ -27,6 +35,9 @@ function simulate(
     implementation = get(params, "implementation", "auto")
     implementation in ("auto", "array", "kernel") ||
         throw(ArgumentError("implementation must be auto, array, or kernel."))
+    coil_combination = get(params, "coil_combination", "gemm")
+    coil_combination in HIGH_ORDER_COIL_COMBINATIONS ||
+        throw(ArgumentError("Unknown coil_combination: $coil_combination."))
     method isa Union{Bloch,BlochHighOrder} ||
         throw(ArgumentError("HO_Phantom currently supports Bloch() and BlochHighOrder()."))
     params["return_type"] in ("mat", "state", "raw") ||
@@ -62,6 +73,8 @@ function simulate(
     )
     isempty(parts) && throw(ArgumentError("The sequence must contain a simulation interval."))
     adc_counts = [count(view(hoseqd.seqd.ADC, first(p)+1:last(p))) for p in parts]
+    max_adc = maximum(adc_counts)
+    max_rf_adc = maximum((n for (n, rf) in zip(adc_counts, excitation_bool) if rf); init=0)
     seq = simulation_sequence(hoseq)
     sum(adc_counts) == sum(seq.ADC.N) ||
         throw(DimensionMismatch("Sampled ADC count does not match the native sequence."))
@@ -88,8 +101,17 @@ function simulate(
         "use implementation=array for other configurations.",
     ))
     use_kernel = implementation != "array" && kernel_supported
+    coil_combination != "gemm" && !use_kernel && throw(ArgumentError(
+        "Coil reduction requires the supported CUDA high-order kernel configuration.",
+    ))
     params["implementation"] = use_kernel ? "kernel" : "array"
-    workspace = use_kernel ? HighOrderGPUWorkspace(obj, maximum(adc_counts), backend) : nothing
+    params["coil_combination"] = coil_combination
+    workspace = use_kernel ? HighOrderGPUWorkspace(
+        obj, max_adc, backend; coil_combination, max_rf_adc,
+    ) : nothing
+    params["max_adc_per_block"] = max_adc
+    params["max_rf_adc_per_block"] = max_rf_adc
+    params["adc_state_buffer_samples"] = isnothing(workspace) ? 0 : size(workspace.adc_states, 2)
     if verbose
         device = params["gpu"] ? KomaMRICore.device_name(backend) : "CPU"
         @info "Running high-order simulation" device implementation=params["implementation"] spins=length(obj) time_points=length(hoseqd.seqd.t) sim_method=method koma_version=pkgversion(KomaMRICore)

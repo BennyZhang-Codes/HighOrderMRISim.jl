@@ -3,3 +3,6 @@
 debug/
 phantom3D/
 output/
+
+# Local validation, profiling tools, and historical experiment reports.
+/local/

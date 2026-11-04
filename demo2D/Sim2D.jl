@@ -87,6 +87,7 @@ sim_params = KomaMRICore.default_sim_params();
 sim_params["sim_method"]  = BHO;      # using "BlochHighOrder" for simulation with high-order terms
 sim_params["return_type"] = "mat";    # setting with "mat", return the signal data for all channel
 sim_params["implementation"] = get(ENV, "HIGHORDERMRISIM_DEMO_IMPLEMENTATION", "auto");
+sim_params["coil_combination"] = get(ENV, "HIGHORDERMRISIM_DEMO_COIL_COMBINATION", "gemm");
 sim_params["precision"]   = get(ENV, "HIGHORDERMRISIM_DEMO_PRECISION", "f64");
 sim_params["gpu"]         = true;     # using GPU for simulation
 sim_params["gpu_device"]  = 0;        # set the GPU device number, if using GPU for simulation

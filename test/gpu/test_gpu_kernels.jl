@@ -4,7 +4,8 @@ using CUDA
 using HighOrderMRISim
 using LinearAlgebra
 import KomaMRICore
-include("performance_workload.jl")
+isdefined(@__MODULE__, :high_order_workload) ||
+    include(joinpath(@__DIR__, "..", "support", "high_order_workload.jl"))
 
 CUDA.functional() || error("CUDA is required.")
 length(collect(CUDA.devices())) == 1 || error("Expose one GPU by UUID.")
