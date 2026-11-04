@@ -12,8 +12,10 @@ take precedence. `w` is retained only for source compatibility; use callbacks
 instead of the removed Blink progress interface.
 
 High-order fields affect free precession, while RF excitation uses nominal
-gradients, matching the original package. This compatibility path retains
-the original array-based calculation; it is not a high-order kernel backend.
+gradients, matching the original package. `"implementation"` selects `"array"`,
+`"kernel"`, or `"auto"` (default). Auto uses the kernel for static CUDA high-order
+simulations and otherwise preserves the array path. An explicit kernel request
+errors if unsupported; it never silently discards motion or changes the model.
 """
 function simulate(
     obj::HO_Phantom, hoseq::HO_Sequence, sys::Scanner;
@@ -22,6 +24,9 @@ function simulate(
     isnothing(w) || @warn "Blink progress windows are no longer supported; use callbacks."
     params = KomaMRICore.default_sim_params(copy(sim_params))
     method = params["sim_method"]
+    implementation = get(params, "implementation", "auto")
+    implementation in ("auto", "array", "kernel") ||
+        throw(ArgumentError("implementation must be auto, array, or kernel."))
     method isa Union{Bloch,BlochHighOrder} ||
         throw(ArgumentError("HO_Phantom currently supports Bloch() and BlochHighOrder()."))
     params["return_type"] in ("mat", "state", "raw") ||
@@ -76,14 +81,23 @@ function simulate(
             KomaMRICore.set_device!(backend, params["gpu_device"])
         obj, hoseqd, Xt, sig = map(x -> gpu(x, backend), (obj, hoseqd, Xt, sig))
     end
+    kernel_supported = params["gpu"] && obj.x isa CUDA.CuArray &&
+        method isa BlochHighOrder && has_static_coordinates(obj)
+    implementation == "kernel" && !kernel_supported && throw(ArgumentError(
+        "The kernel requires CUDA, BlochHighOrder, and default static coordinates; " *
+        "use implementation=array for other configurations.",
+    ))
+    use_kernel = implementation != "array" && kernel_supported
+    params["implementation"] = use_kernel ? "kernel" : "array"
+    workspace = use_kernel ? HighOrderGPUWorkspace(obj, maximum(adc_counts), backend) : nothing
     if verbose
         device = params["gpu"] ? KomaMRICore.device_name(backend) : "CPU"
-        @info "Running high-order simulation" device spins=length(obj) time_points=length(hoseqd.seqd.t) sim_method=method koma_version=pkgversion(KomaMRICore)
+        @info "Running high-order simulation" device implementation=params["implementation"] spins=length(obj) time_points=length(hoseqd.seqd.t) sim_method=method koma_version=pkgversion(KomaMRICore)
     end
     timed_tuple = @timed run_sim_time_iter!(
         obj, hoseqd, sig, Xt, method;
         Nblocks=length(parts), Nthreads=params["Nthreads"], parts,
-        excitation_bool, adc_counts, backend, verbose, callbacks, sim_params=params,
+        excitation_bool, adc_counts, backend, workspace, verbose, callbacks, sim_params=params,
     )
     sig = sum(cpu(sig); dims=length(Ndims)+1)
     sig .*= get_adc_phase_compensation(seq)

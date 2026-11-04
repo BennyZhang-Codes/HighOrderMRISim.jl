@@ -12,7 +12,8 @@ sim_params = KomaMRICore.default_sim_params()
 
 sim_params["sim_method"]  = BHO      # using "BlochHighOrder" for simulation with high-order terms
 sim_params["return_type"] = "mat"    # return full complex signal for all channels
-sim_params["precision"]   = "f32"    # single-precision computation
+sim_params["implementation"] = get(ENV, "HIGHORDERMRISIM_DEMO_IMPLEMENTATION", "auto")
+sim_params["precision"]   = get(ENV, "HIGHORDERMRISIM_DEMO_PRECISION", "f32")
 sim_params["gpu"]         = true     # enable GPU acceleration
 sim_params["gpu_device"]  = 0        # select GPU device ID
 sim_params["Nblocks"]     = 2000     # number of blocks for GPU simulation (memory dependent)

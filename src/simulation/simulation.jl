@@ -14,6 +14,7 @@ include("Simulate.jl")
 include("SimulatorCore.jl")
 include("Bloch/BlochSimulatitonMethod.jl")
 include("Bloch/BlochHighOrderSimulatitonMethod.jl")
+include("kernels/HighOrderGPU.jl")
 
 include("SimType.jl")
 export SimType

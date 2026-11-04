@@ -32,6 +32,7 @@ println("GPU regression device: ", CUDA.name(CUDA.device()), " / ", CUDA.uuid(CU
             gpu_blocks = Ref(0)
             callback = function (_, _, data, actual_params)
                 @test actual_params["gpu"]
+                @test actual_params["implementation"] == "kernel"
                 @test data.obj.x isa CUDA.CuArray
                 @test parent(data.sig) isa CUDA.CuArray
                 gpu_blocks[] += 1
@@ -46,6 +47,52 @@ println("GPU regression device: ", CUDA.name(CUDA.device()), " / ", CUDA.uuid(CU
             @test all(isfinite, signal)
             @test gpu_blocks[] > 0
             @test obj.ρ == density
+            array_signal = simulate(
+                obj, hoseq, Scanner(); verbose=false,
+                sim_params=merge(params, Dict("gpu" => true, "gpu_device" => 0,
+                                             "implementation" => "array")),
+            )
+            @test signal ≈ array_signal atol=tolerance rtol=tolerance
         end
     end
+end
+
+@testset "Execution selection and kernel API" begin
+    obj, hoseq = compatibility_phantom(), HO_Sequence(compatibility_sequence())
+    params = Dict{String,Any}(
+        "gpu" => true, "gpu_device" => 0, "precision" => "f64",
+        "sim_method" => BlochHighOrder("1111"), "return_type" => "mat",
+        "implementation" => "kernel", "max_block_length" => 1,
+    )
+    original = copy(params)
+    reference = simulate(obj, hoseq, Scanner(); sim_params=params, verbose=false)
+    @test params == original
+    for block_length in (2, 32, 128)
+        signal = simulate(obj, hoseq, Scanner(); verbose=false,
+                          sim_params=merge(params, Dict("max_block_length" => block_length)))
+        @test signal ≈ reference atol=1e-11 rtol=1e-11
+    end
+    for implementation in ("array", "kernel")
+        state = simulate(obj, hoseq, Scanner(); verbose=false,
+                         sim_params=merge(params, Dict("implementation" => implementation,
+                                                       "return_type" => "state")))
+        @test state.xy ≈ im .* obj.ρ atol=1e-11
+        raw = simulate(obj, hoseq, Scanner(); verbose=false,
+                       sim_params=merge(params, Dict("implementation" => implementation,
+                                                     "return_type" => "raw")))
+        @test sum(size(profile.data, 1) for profile in raw.profiles) == 5
+        @test all(size(profile.data, 2) == 2 for profile in raw.profiles)
+    end
+    @test_throws ArgumentError simulate(obj, hoseq, Scanner(); verbose=false,
+        sim_params=merge(params, Dict("implementation" => "unknown")))
+    @test_throws ArgumentError simulate(obj, hoseq, Scanner(); verbose=false,
+        sim_params=merge(params, Dict("gpu" => false)))
+    obj.ux = (x, y, z, t) -> 0
+    @test_throws ArgumentError simulate(obj, hoseq, Scanner(); sim_params=params, verbose=false)
+    paths = String[]
+    callback = (_, _, _, actual) -> push!(paths, actual["implementation"])
+    fallback = simulate(obj, hoseq, Scanner(); verbose=false, callbacks=(callback,),
+                        sim_params=merge(params, Dict("implementation" => "auto")))
+    @test !isempty(paths) && all(==("array"), paths)
+    @test fallback ≈ reference atol=1e-11
 end

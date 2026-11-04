@@ -2,7 +2,7 @@
 
 julia_version = "1.12.7"
 manifest_format = "2.0"
-project_hash = "8b8d5ebf8238071dce9c0d882a0da4dc4ddabce1"
+project_hash = "ecbe3bf52a28d76a407add6572f403f371e17001"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -703,7 +703,7 @@ uuid = "076d061b-32b6-4027-95e0-9a2c6f6d7e74"
 version = "0.2.0"
 
 [[deps.HighOrderMRISim]]
-deps = ["CUDA", "Functors", "ImageDistances", "ImageMorphology", "ImageQualityIndexes", "ImageTransformations", "Interpolations", "KomaMRI", "KomaMRIBase", "KomaMRICore", "KomaMRIFiles", "KomaMRIPlots", "LinearAlgebra", "MAT", "MRIBase", "Parameters", "Pkg", "ProgressMeter", "PyPlot", "Reexport", "Statistics", "ThreadsX"]
+deps = ["CUDA", "Functors", "ImageDistances", "ImageMorphology", "ImageQualityIndexes", "ImageTransformations", "Interpolations", "KernelAbstractions", "KomaMRI", "KomaMRIBase", "KomaMRICore", "KomaMRIFiles", "KomaMRIPlots", "LinearAlgebra", "MAT", "MRIBase", "Parameters", "Pkg", "ProgressMeter", "PyPlot", "Reexport", "Statistics", "ThreadsX"]
 path = "."
 uuid = "6437142c-3aa9-4303-9277-bb0012cca490"
 version = "0.8.0"

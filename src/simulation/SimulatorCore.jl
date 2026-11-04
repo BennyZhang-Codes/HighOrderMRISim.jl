@@ -96,7 +96,7 @@ take advantage of CPU parallel processing.
 function run_sim_time_iter!(obj::HO_Phantom, hoseqd::HO_DiscreteSequence, sig::AbstractArray{Complex{T}},
     Xt::SpinStateRepresentation{T}, sim_method::SimulationMethod;
     Nblocks=1, Nthreads=Threads.nthreads(), parts=[1:length(hoseqd.seqd.t)],
-    excitation_bool=ones(Bool, size(parts)), adc_counts=nothing, backend=nothing,
+    excitation_bool=ones(Bool, size(parts)), adc_counts=nothing, backend=nothing, workspace=nothing,
     verbose=true, callbacks=(), sim_params=Dict{String,Any}(), w=nothing) where {T<:Real}
     # Simulation
     rfs = 0
@@ -112,10 +112,18 @@ function run_sim_time_iter!(obj::HO_Phantom, hoseqd::HO_DiscreteSequence, sig::A
         dims = ntuple(_ -> Colon(), ndims(sig) - 1)
         # Simulation wrappers
         if excitation_bool[block]
-            run_spin_excitation_parallel!(obj, seq_block, @view(sig[acq_samples, dims...]), Xt, sim_method; Nthreads)
+            if isnothing(workspace)
+                run_spin_excitation_parallel!(obj, seq_block, @view(sig[acq_samples, dims...]), Xt, sim_method; Nthreads)
+            else
+                run_high_order_excitation!(workspace, obj, seq_block, @view(sig[acq_samples, :, 1]), Xt, sim_method)
+            end
             rfs += 1
         else
-            run_spin_precession_parallel!(obj, seq_block, @view(sig[acq_samples, dims...]), Xt, sim_method; Nthreads)
+            if isnothing(workspace)
+                run_spin_precession_parallel!(obj, seq_block, @view(sig[acq_samples, dims...]), Xt, sim_method; Nthreads)
+            else
+                run_high_order_precession!(workspace, obj, seq_block, @view(sig[acq_samples, :, 1]), Xt, sim_method)
+            end
         end
         isnothing(backend) || KomaMRICore.KA.synchronize(backend)
         samples += Nadc

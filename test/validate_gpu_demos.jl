@@ -37,6 +37,11 @@ function validate_gpu_demo(case, output_directory)
     ENV["HIGHORDERMRISIM_DEMO_SIMULATION_ONLY"] = "true"
     ENV["HIGHORDERMRISIM_DEMO_ORDERS"] = case == "2d_nominal" ? "0000" : "1111"
     get!(ENV, "HIGHORDERMRISIM_DEMO_MAX_BLOCK_LENGTH", "32")
+    get!(ENV, "HIGHORDERMRISIM_DEMO_IMPLEMENTATION", "kernel")
+    if haskey(ENV, "HIGHORDERMRISIM_DEMO_PRECISION")
+        ENV["HIGHORDERMRISIM_DEMO_PRECISION"] in ("f32", "f64") ||
+            error("HIGHORDERMRISIM_DEMO_PRECISION must be f32 or f64.")
+    end
     root = normpath(joinpath(@__DIR__, ".."))
     mkpath(output_directory)
     println("Case: ", case)
@@ -87,6 +92,7 @@ function finalize_gpu_demo(case, output_directory, wall_seconds, device_uuid)
         "koma_core_version" => string(pkgversion(KomaMRICore)),
         "orders" => ENV["HIGHORDERMRISIM_DEMO_ORDERS"],
         "precision" => DemoInputs.sim_params["precision"],
+        "implementation" => DemoInputs.sim_params["implementation"],
         "matrix_size" => collect(DemoInputs.target_matrix),
         "resolution_m" => collect(DemoInputs.target_res),
         "spins" => length(obj),
@@ -115,5 +121,7 @@ function finalize_gpu_demo(case, output_directory, wall_seconds, device_uuid)
     return nothing
 end
 
-length(ARGS) == 2 || error("Expected a demo case and an output directory.")
-validate_gpu_demo(ARGS[1], abspath(ARGS[2]))
+if abspath(PROGRAM_FILE) == @__FILE__
+    length(ARGS) == 2 || error("Expected a demo case and an output directory.")
+    validate_gpu_demo(ARGS[1], abspath(ARGS[2]))
+end

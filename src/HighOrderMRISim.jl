@@ -27,6 +27,9 @@ import ImageTransformations: imresize
 
 @reexport using KomaMRI
 import KomaMRIBase, KomaMRICore
+import KernelAbstractions
+import LinearAlgebra
+using KernelAbstractions: @kernel, @index
 import KomaMRICore: SimulationMethod, SpinStateRepresentation
 import Functors: @functor
 
