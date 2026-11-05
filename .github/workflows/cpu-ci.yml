@@ -48,6 +48,9 @@ jobs:
           printf 'JULIA_DEPOT_PATH=%s/highordermrisim-depot:\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
 
       - name: Instantiate the package environment
+        env:
+          # Precompile in the test environment with its bounds-check settings.
+          JULIA_PKG_PRECOMPILE_AUTO: '0'
         run: julia --startup-file=no --project=. -e 'using Pkg; Pkg.instantiate()'
 
       - name: Run the CPU package tests
