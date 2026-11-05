@@ -117,7 +117,7 @@ end
 
 function run_fused_high_order_precession!(workspace, obj, hoseqd, sig, M, method)
     seq, fusion = hoseqd.seqd, workspace.fusion
-    coefficients = ntuple(i -> getfield(hoseqd, Symbol("h", i-1)), 16)
+    coefficients = high_order_coefficients(hoseqd)
     orders = Val((method.ho0, method.ho1, method.ho2, method.ho3, method.Δw_precession))
     high_order_fused_precession_kernel!(workspace.backend, workspace.groupsize)(
         M.xy, M.z, fusion.partials, obj.x, obj.y, obj.z, obj.ρ, obj.T1, obj.T2,

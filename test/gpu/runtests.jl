@@ -29,4 +29,8 @@ test_fused_coils()
 include("test_gpu_rf_buffers.jl")
 test_gpu_rf_buffers()
 
+@info "Testing reusable simulation and synchronization"
+include("test_prepared_simulation.jl")
+test_prepared_simulation([0])
+
 println("GPU_REGRESSION_TESTS_OK")

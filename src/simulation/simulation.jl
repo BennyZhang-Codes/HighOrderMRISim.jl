@@ -5,18 +5,24 @@ import KomaMRICore: mul!, Q
 import KomaMRICore: run_spin_excitation_parallel!, run_spin_precession_parallel!, run_sim_time_iter!
 import KomaMRICore: simulate
 
-# define BlochHighOrder struct first, for workflow control in the run_spin_excitation! & run_spin_precession! functions
+# Simulation methods and the shared time loop.
 include("BlochHighOrder.jl")
 export BlochHighOrder
 
-# define simulation functions for different phantoms
 include("Simulate.jl")
 include("SimulatorCore.jl")
 include("Bloch/BlochSimulatitonMethod.jl")
 include("Bloch/BlochHighOrderSimulatitonMethod.jl")
+
+# CUDA kernels and coil workspaces.
 include("kernels/HighOrderGPU.jl")
 include("kernels/CoilReductionGPU.jl")
 include("kernels/FusedCoilGPU.jl")
+
+# Multi-device execution and optional resource reuse.
+include("DistributedSimulation.jl")
+include("PreparedSimulation.jl")
+export PreparedSimulation, prepare_simulation
 
 include("SimType.jl")
 export SimType

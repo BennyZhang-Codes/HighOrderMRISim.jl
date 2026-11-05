@@ -28,39 +28,51 @@ times. DiscreteSequence is the struct used for simulation.
 # Returns
 - `hoseqd`: (`::HO_DiscreteSequence`) HO_DiscreteSequence struct
 """
-struct HO_DiscreteSequence{T<:Real}
-    seqd::DiscreteSequence{T}
-    h0::AbstractVector{T}
-    h1::AbstractVector{T}
-    h2::AbstractVector{T}
-    h3::AbstractVector{T}
-    h4::AbstractVector{T}
-    h5::AbstractVector{T}
-    h6::AbstractVector{T}
-    h7::AbstractVector{T}
-    h8::AbstractVector{T}
-    h9::AbstractVector{T}
-    h10::AbstractVector{T}
-    h11::AbstractVector{T}
-    h12::AbstractVector{T}
-    h13::AbstractVector{T}
-    h14::AbstractVector{T}
-    h15::AbstractVector{T}
+struct HO_DiscreteSequence{T<:Real,S<:DiscreteSequence{T},H<:AbstractVector{T}}
+    seqd::S
+    h0::H
+    h1::H
+    h2::H
+    h3::H
+    h4::H
+    h5::H
+    h6::H
+    h7::H
+    h8::H
+    h9::H
+    h10::H
+    h11::H
+    h12::H
+    h13::H
+    h14::H
+    h15::H
 end
+
+function HO_DiscreteSequence(seqd::S, fields::Vararg{AbstractVector{T},16}) where {T,S<:DiscreteSequence{T}}
+    # Ordinary homogeneous CPU/CUDA storage stays concrete. Mixed vector
+    # implementations retain the generality of the former abstract fields.
+    H = foldl(typejoin, map(typeof, fields))
+    return HO_DiscreteSequence{T,S,H}(seqd, fields...)
+end
+HO_DiscreteSequence{T}(seqd::DiscreteSequence{T}, fields::Vararg{AbstractVector{T},16}) where {T} =
+    HO_DiscreteSequence(seqd, fields...)
 @functor HO_DiscreteSequence
+
+@inline high_order_coefficients(hoseqd::HO_DiscreteSequence) =
+    ntuple(i -> getfield(hoseqd, i+1), Val(16))
 
 Base.length(hoseqd::HO_DiscreteSequence) = length(hoseqd.seqd)
 Base.getindex(hoseqd::HO_DiscreteSequence, i::Integer) =
-    HO_DiscreteSequence(hoseqd.seqd[i], ntuple(16) do term
-        getfield(hoseqd, Symbol("h", term - 1))[i:i]
+    HO_DiscreteSequence(hoseqd.seqd[i], ntuple(Val(16)) do term
+        getfield(hoseqd, term+1)[i:i]
     end...)
 Base.getindex(hoseqd::HO_DiscreteSequence, nodes::UnitRange) =
-    HO_DiscreteSequence(hoseqd.seqd[nodes], ntuple(16) do term
-        getfield(hoseqd, Symbol("h", term - 1))[nodes]
+    HO_DiscreteSequence(hoseqd.seqd[nodes], ntuple(Val(16)) do term
+        getfield(hoseqd, term+1)[nodes]
     end...)
 Base.view(hoseqd::HO_DiscreteSequence, nodes::UnitRange) =
-    HO_DiscreteSequence(view(hoseqd.seqd, nodes), ntuple(16) do term
-        view(getfield(hoseqd, Symbol("h", term - 1)), nodes)
+    HO_DiscreteSequence(view(hoseqd.seqd, nodes), ntuple(Val(16)) do term
+        view(getfield(hoseqd, term+1), nodes)
     end...)
 Base.iterate(hoseqd::HO_DiscreteSequence) =
     isempty(hoseqd.seqd.Δt) ? nothing : (hoseqd[1], 2)

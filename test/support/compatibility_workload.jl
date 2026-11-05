@@ -15,3 +15,14 @@ function compatibility_phantom()
         csm=ComplexF64[1 im; 0.5-0.2im -0.3+0.1im],
     )
 end
+
+function rf_acquisition_sequence(nrf_first, nrf_last, npre; rf_on=true)
+    τ = 120e-6
+    gradients = [Grad(0.0, 0.0) for _ in 1:3, _ in 1:3]
+    first_amplitude = rf_on ? 1 / (4γ * τ) : 0.0
+    last_amplitude = rf_on ? 1 / (8γ * τ) : 0.0
+    pulses = reshape([RF(first_amplitude, τ), RF(0.0, 0.0), RF(last_amplitude, τ)], 1, :)
+    rf_adc(n) = n == 0 ? ADC(0, 0.0) : ADC(n, τ / 2, τ / 4)
+    adcs = [rf_adc(nrf_first), npre == 0 ? ADC(0, 0.0) : ADC(npre, 1e-3, 1e-4), rf_adc(nrf_last)]
+    return Sequence(gradients, pulses, adcs, [τ, 2e-3, τ])
+end

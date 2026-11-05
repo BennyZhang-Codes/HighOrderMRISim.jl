@@ -3,13 +3,14 @@
 # need RF capacity. GEMM keeps full ADC capacity and remains the default.
 const HIGH_ORDER_COIL_COMBINATIONS = ("gemm", "reduction", "fused_warp", "fused_tiled")
 
-struct HighOrderGPUWorkspace{A,C,P,F,B}
+struct HighOrderGPUWorkspace{A,C,P,F,B,S}
     adc_states::A
     coil_signal::C
     coil_partials::P
     fusion::F
     backend::B
     groupsize::Int
+    gemm_scalars::S
 end
 
 function HighOrderGPUWorkspace(obj::HO_Phantom{T}, max_adc, backend;
@@ -41,10 +42,18 @@ function HighOrderGPUWorkspace(obj::HO_Phantom{T}, max_adc, backend;
         partials=similar(obj.x, Complex{T}, cld(length(obj), groupsize), max_adc * size(obj.csm, 2)),
         adc_tile=Val(A), coil_tile=Val(C),
     ) : nothing
+    scalars = if coil_combination == "gemm" && pkgversion(CUDA) >= v"6.0"
+        # CUDA 6 uses device scalar pointers for cuBLAS. The generic GEMM
+        # wrapper allocates/uploads alpha and beta on every block; retain them.
+        values = CUDA.CuArray(Complex{T}[1, 0])
+        (; values, one=view(values, 1:1), zero=view(values, 2:2))
+    else
+        nothing
+    end
     return HighOrderGPUWorkspace(
         states, coil_combination != "reduction" ?
             similar(obj.x, Complex{T}, buffer_adc * size(obj.csm, 2)) : nothing,
-        partials, fusion, backend, groupsize,
+        partials, fusion, backend, groupsize, scalars,
     )
 end
 
@@ -118,7 +127,7 @@ function run_high_order_precession!(workspace, obj, hoseqd, sig, M, method)
         return nothing
     end
     seq = hoseqd.seqd
-    coefficients = ntuple(i -> getfield(hoseqd, Symbol("h", i-1)), 16)
+    coefficients = high_order_coefficients(hoseqd)
     orders = Val((method.ho0, method.ho1, method.ho2, method.ho3, method.Δw_precession))
     high_order_precession_kernel!(workspace.backend, workspace.groupsize)(
         M.xy, M.z, workspace.adc_states, obj.x, obj.y, obj.z,
@@ -141,9 +150,31 @@ function combine_high_order_signal!(sig, workspace, csm)
     # GPU matmul instead of cuBLAS. Repack a reusable buffer, then copy once.
     output = reshape(view(workspace.coil_signal, 1:length(sig)), size(sig))
     # The existing CSM convention uses transpose, not complex conjugation.
-    LinearAlgebra.mul!(output, transpose(states), csm)
+    if isnothing(workspace.gemm_scalars)
+        LinearAlgebra.mul!(output, transpose(states), csm)
+    else
+        high_order_gemm!(output, states, csm, workspace.gemm_scalars)
+    end
     sig .= output
     return nothing
+end
+
+function high_order_gemm!(output, states, csm, scalars)
+    m, n, k = size(states, 2), size(csm, 2), size(states, 1)
+    if iszero(k)
+        fill!(output, zero(eltype(output)))
+        return output
+    end
+    compute = CUDA.CUBLAS.gemmExComputeType(eltype(states), eltype(csm), eltype(output), m, k, n)
+    CUDA.CUBLAS.juliaStorageType(eltype(output), compute) === eltype(scalars.values) ||
+        throw(ArgumentError("The cuBLAS scalar precision does not match the selected compute mode."))
+    # Same GEMMEx operation, algorithm, transpose convention and compute mode
+    # as LinearAlgebra.mul!: only alpha/beta storage is reused.
+    CUDA.CUBLAS.cublasGemmEx(CUDA.CUBLAS.handle(), 'T', 'N', m, n, k,
+        scalars.one, states, eltype(states), max(1, stride(states,2)),
+        csm, eltype(csm), max(1, stride(csm,2)), scalars.zero,
+        output, eltype(output), max(1,stride(output,2)), compute, CUDA.CUBLAS.CUBLAS_GEMM_DEFAULT)
+    return output
 end
 
 # Same hard-pulse spinor and relaxation order as the compatibility reference.

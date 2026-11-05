@@ -31,6 +31,9 @@ This is also the entry point used by `Pkg.test`. It does not require a CUDA
 device and never includes the explicit GPU suite. It covers modern KomaMRI
 compatibility, simulation input/state ownership, high-order sequence sampling,
 coil sensitivity, phantom construction, and center cropping/padding.
+Coil-map tests include analytic complex-field interpolation in Float32/Float64,
+outer half-voxel face/edge/corner extension, zero output beyond the source FOV,
+zero-norm preservation, and the previously blind real-map boundary region.
 
 ## Explicit GPU suite
 
@@ -42,7 +45,8 @@ export CUDA_VISIBLE_DEVICES="<GPU-UUID>"
 julia --startup-file=no --threads=4 test/gpu/runtests.jl
 ```
 
-The runner executes all five regression files serially. A missing/nonfunctional
+The runner executes the five kernel/compatibility regression files and prepared
+simulation lifecycle checks serially. A missing/nonfunctional
 GPU is an error, not a skipped test or a silent CPU fallback. Scalar indexing
 is disabled. Shared inputs are loaded once without rerunning CPU tests.
 
@@ -63,6 +67,29 @@ julia --startup-file=no --threads=4 test/gpu/test_gpu_rf_buffers.jl
 Both f32 and f64 are tested. Signal comparisons retain precision-specific
 tolerances and verify final states and input ownership. Tests do not change the
 simulation's cuBLAS default, enable higher-order RF terms, or relax precision.
+
+## Explicit multi-GPU suite
+
+Run this separately from the single-device suite, exposing only approved GPUs:
+
+```bash
+CUDA_VISIBLE_DEVICES="<GPU-UUID-1>,<GPU-UUID-2>" \
+  julia --startup-file=no --threads=4 test/gpu/runtests_multigpu.jl
+```
+
+The suite checks both precisions and every coil path, finite T1/T2 history,
+multiple RF pulses with ADC during RF, ordered final-state assembly, shard-local
+callbacks, device/math-mode selection, immutable input parameters, raw output,
+invalid IDs, and worker failure propagation. Full native-grid demo comparisons
+and performance/reconstruction experiments remain outside `test/` in ignored
+`local/`; they are not prerequisites for `Pkg.test`.
+
+The single/multi-GPU runners also check prepared-plan reuse, independent returned
+arrays, snapshot ownership, matrix/state/raw output, block/auto synchronization
+equivalence, callback observation and state edits, recovery after callback
+failure, recursion rejection, do-block cleanup, idempotent close and closed-plan
+errors. Both precisions and all coil paths are covered. CPU sampled-storage
+tests check concrete homogeneous storage and mixed-vector compatibility.
 
 ## Optional device sanitizers
 
