@@ -1,9 +1,7 @@
 using HighOrderMRISim
-using PyPlot
 using MAT
 
-demo_plots = get(ENV, "HIGHORDERMRISIM_DEMO_PLOTS", "true") == "true"
-demo_plots && PyPlot.pygui(true)
+demo_plots = true
 
 T = Float32
 

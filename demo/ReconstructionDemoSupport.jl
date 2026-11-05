@@ -5,7 +5,7 @@ import RegularizedLeastSquares as RLS
 import HighOrderMRI: AbstractNFFTs
 import NFFT, NonuniformFFTs
 
-function reconstruct(dataset; operator=get(ENV, "HIGHORDERMRISIM_RECON_OPERATOR", "lowrank"))
+function reconstruct(dataset; operator="lowrank", gpus=[0], iterations=200, rank=30)
     d = MAT.matread(dataset)
     d["schema_version"] == 1 || error("Unsupported demo data schema.")
     dims = Tuple(Int.(vec(d["dimensions"])))
@@ -22,7 +22,6 @@ function reconstruct(dataset; operator=get(ENV, "HIGHORDERMRISIM_RECON_OPERATOR"
         maximum(abs, actual .- expected) <= 8eps(T)*maximum(abs, expected) ||
             error("The LowRank NFFT grid must be centred; axis $axis differs.")
     end
-    gpus = parse.(Int, split(get(ENV, "HIGHORDERMRISIM_RECON_GPUS", "0"), ','))
     CUDA.device!(first(gpus))
     CUDA.allowscalar(false)
     CUDA.math_mode!(CUDA.PEDANTIC_MATH)
@@ -50,7 +49,7 @@ function reconstruct(dataset; operator=get(ENV, "HIGHORDERMRISIM_RECON_OPERATOR"
                 error("LowRank demo expects equal samples per acquired readout.")
             op = Recon.HighOrderLowRankOp(grid, reshape(coefficients, 16, ns, :),
                 reshape(times, ns, :); common..., arrayType=CuArray,
-                L_rank=parse(Int, get(ENV, "HIGHORDERMRISIM_RECON_RANK", "30")),
+                L_rank=rank,
                 rsvd_finalize=:gram, rsvd_backend=:kernel,
                 rsvd_distribution=length(gpus) > 1 ? :voxel : :single,
                 normal_distribution=length(gpus) > 1 ? :rank : :single,
@@ -60,11 +59,11 @@ function reconstruct(dataset; operator=get(ENV, "HIGHORDERMRISIM_RECON_OPERATOR"
                 backend=dims[3] == 1 ? :cached_full : :blocked,
                 phase_backend=:gemm, gemm_backend=:cublas, block_size=320)
         else
-            error("RECON_OPERATOR must be lowrank or kernel.")
+            error("operator must be lowrank or kernel.")
         end
         rec_params = Dict{Symbol,Any}(:reconSize => dims, :solver => RLS.CGNR,
             :reg => RLS.L2Regularization(zero(T)),
-            :iterations => parse(Int, get(ENV, "HIGHORDERMRISIM_RECON_ITERATIONS", "200")),
+            :iterations => iterations,
             :relTol => T === Float32 ? T(1e-9) : T(1e-12))
         image = Recon.recon_HOOp(op, CuArray(d["data"]), CuArray(weights), rec_params)
         # These are reference diagnostics, not a guarantee of solver convergence.

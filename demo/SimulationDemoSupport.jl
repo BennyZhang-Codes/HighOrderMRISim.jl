@@ -91,13 +91,6 @@ function sampled_encoding(hoseq, params, orders)
         coefficients, ages, preparation, rf_phases, ideal_rf_magnitudes)
 end
 
-function device_options()
-    storage = get(ENV, "HIGHORDERMRISIM_DEMO_ARRAY_TYPE", "cuda")
-    storage in ("cpu", "cuda") || error("DEMO_ARRAY_TYPE must be cpu or cuda.")
-    ids = parse.(Int, split(get(ENV, "HIGHORDERMRISIM_DEMO_GPUS", "0"), ','))
-    return storage == "cpu" ? (; array_type=Array) : (; array_type=CUDA.CuArray, gpus=ids)
-end
-
 function density_callback(plan)
     return function (progress, blocks, data, _)
         node = last(blocks.parts[progress.block])
@@ -115,14 +108,12 @@ function density_callback(plan)
     end
 end
 
-function prepare_run!(obj, hoseq, params)
+function prepare_run!(obj, hoseq, params; mode="physical")
     # One explicit time-block policy shared by simulation and encoding export.
     pop!(params, "Nblocks", nothing)
-    params["max_block_length"] = parse(Int,
-        get(ENV, "HIGHORDERMRISIM_DEMO_MAX_BLOCK_LENGTH", "32"))
+    params["max_block_length"] = 32
     params["max_rf_block_length"] = Inf
-    mode = get(ENV, "HIGHORDERMRISIM_DEMO_MODE", "physical")
-    mode in ("physical", "density") || error("DEMO_MODE must be physical or density.")
+    mode in ("physical", "density") || error("mode must be physical or density.")
     plan = sampled_encoding(hoseq, params, params["sim_method"].name)
     if mode == "density"
         # Validation control only: replace RF preparation, not production physics.
@@ -154,8 +145,7 @@ function export_run(case, signal, obj, hoseq, params, run, rho, resolution, offc
     rf_phase = run.mode == "density" ? ones(Complex{T}, length(compensation)) :
         Complex{T}.(run.plan.rf_phases[run.plan.preparation])
     data = signal[:, :, 1] ./ reshape(Complex{T}.(compensation) .* rf_phase, :, 1) ./ T(sqrt(count(mask)))
-    output = abspath(get(ENV, "HIGHORDERMRISIM_DEMO_OUTPUT",
-        joinpath(@__DIR__, "..", "output", case)))
+    output = normpath(joinpath(@__DIR__, "..", "output", case))
     mkpath(output)
     destination = joinpath(output, "$case-$(params["sim_method"].name)-$(run.mode).mat")
     MAT.matwrite(destination, Dict("schema_version" => 1, "data" => data,
