@@ -1,4 +1,4 @@
-using HighOrderMRISim, MRIReco, MAT
+using HighOrderMRISim, MAT
 
 # Set these flags for headless, simulation-only validation without reconstruction.
 demo_plots = get(ENV, "HIGHORDERMRISIM_DEMO_PLOTS", "true") == "true"
@@ -55,8 +55,12 @@ demo_plots && plt_seq(hoseqMeasured)
 #     ΔB₀ map and coil-sensitivity maps (acquired from a real GRE acquisition)
 #########################################################################################
 T = Float64;
-nX = nY = 200; nZ = 1;  # matrix size for recon
-Δx = Δy = 1e-3; Δz = 2e-3;
+# One sequence-defined grid for simulation, receive maps, and reconstruction.
+target_matrix = Tuple(Int.(seq.DEF["matrixSize"]))
+target_fov = Tuple(Float64.(seq.DEF["FOV"]))
+target_res = target_fov ./ target_matrix
+nX, nY, nZ = target_matrix
+Δx, Δy, Δz = target_res
 
 # settings for phantom
 B0 = false    # turn on B0
@@ -64,8 +68,6 @@ T2 = false    # turn off T2
 
 BHO          = BlochHighOrder(get(ENV, "HIGHORDERMRISIM_DEMO_ORDERS", "0000"), true, true)
 brainphantom = BrainPhantom(prefix="brain3D", x=0.5, y=0.5, z=0.5) # setting for Phantom: decide which phantom file to use, loading phantom from src/phantom/mat folder                                
-target_res   = (0.5, 0.5, 2.).*1e-3     # target resolution
-target_matrix= (400, 400,  1)           # target matrix size
 location     = ( 0.,  0., 0.).*1e-3     # target location of the sampling center
 offcenter    = ( 0.,  0., 0.).*1e-3     # offcenter shift
 fieldstrength= "1.5T"
@@ -91,65 +93,17 @@ sim_params["coil_combination"] = get(ENV, "HIGHORDERMRISIM_DEMO_COIL_COMBINATION
 sim_params["precision"]   = get(ENV, "HIGHORDERMRISIM_DEMO_PRECISION", "f64");
 sim_params["gpu"]         = true;     # using GPU for simulation
 sim_params["gpu_device"]  = 0;        # set the GPU device number, if using GPU for simulation
-sim_params["Nblocks"]     = 2000;     # the number of blocks for GPU simulation, set according to the GPU memory
-if haskey(ENV, "HIGHORDERMRISIM_DEMO_MAX_BLOCK_LENGTH")
-    sim_params["max_block_length"] = parse(Int, ENV["HIGHORDERMRISIM_DEMO_MAX_BLOCK_LENGTH"])
-end
 
-# 3. simulate
-signal    = simulate(obj, hoseqMeasured, sys; sim_params);          
-
+# 3. Simulate and export the exact grid/encoding used by the simulation.
+include(joinpath(@__DIR__, "..", "demo", "SimulationDemoSupport.jl"))
+run = SimulationDemoSupport.prepare_run!(obj, hoseqMeasured, sim_params)
+signal = simulate(obj, hoseqMeasured, sys; sim_params,
+    SimulationDemoSupport.device_options()..., callbacks=run.callbacks)
 if !simulation_only
-# 4. Adding noise to signal data
-snr       = 10;
-data      = AddNoise(signal[:,:,1], snr);
-
-
-#########################################################################################
-# 3. preparation for reconstruction
-#########################################################################################
-# get your ΔB₀ map and coil-sensitivity maps
-target_fov    = (200e-3, 200e-3, 2e-3)
-target_matrix = (200, 200, 1)
-target_res    = target_fov ./ target_matrix
-
-b0 = hophantom_brain(brainphantom, :Δw, target_res, target_matrix, location, offcenter; 
-        fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
-demo_plots && plt_image(rotl90(b0[:,:]))
-
-csm = hophantom_brain(brainphantom, :csm, target_res, target_matrix, location, offcenter;
-        fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
-demo_plots && plt_image(rotl90(abs.(csm)[:,:, 1,1]))
-
-# get spin-density map
-ρ = hophantom_brain(brainphantom, :ρ, target_res, target_matrix, location, offcenter; 
-        fieldstrength=fieldstrength, b0_type=b0_type, csm_type=csm_type, csm_nCoil=csm_nCoil, verbose=verbose)
-demo_plots && plt_image(rotl90(ρ[:,:]))
-
-# get nominal k-space trajectory
-_, kspha_xyz = get_kspace(hoseqMeasured.SEQ; sampling_rule=MaxStepSizeRule(1, 5e-5));
-C = maximum(2*abs.(kspha_xyz[:]));  #Normalize k-space to -.5 to .5 for NUFFT
-
-# preparation for NUFFT reconstruction
-tr = Trajectory("2dspiral", T.(kspha_xyz[:,1:2]' ./ C),  T.(datatime), T.(5e-3), T.(nSample*dt_adc), 1, nSample, 1, false, false);
-dat         = Array{Array{Complex{T},2},3}(undef,1,1,1);
-dat[1,1,1]  = signal[:,:,1];
-acqData     = AcquisitionData(tr, dat, encodingSize=(nX, nY));
-
-###########################################################################################
-# 4. Reconstruction (NUFFT)
-###########################################################################################
-params = Dict{Symbol, Any}()
-params[:reco] = "multiCoil"
-params[:reconSize] = (nX, nY)
-params[:regularization] = "L2"
-params[:λ] = 1e-3
-params[:iterations] = 20
-params[:solver] = "cgnr"
-params[:senseMaps] = Complex{T}.(reshape(csm, nX, nY, nZ, 32));
-
-@time Ireco = reconstruction(acqData, params);
-img = Ireco[:,:,1,1,1,1];
-demo_plots && plt_image(rotl90(abs.(img)); vminp=0, vmaxp=99.0)
-end # optional reconstruction
+    rho = hophantom_brain(brainphantom, :ρ, target_res, target_matrix, location, offcenter;
+        fieldstrength, b0_type, csm_type, csm_nCoil, verbose=false)
+    dataset = SimulationDemoSupport.export_run("2d", signal, obj, hoseqMeasured,
+        sim_params, run, rho, target_res, offcenter)
+    println("Reconstruct separately with demo2D/Recon2D.jl and the saved dataset.")
+end
 

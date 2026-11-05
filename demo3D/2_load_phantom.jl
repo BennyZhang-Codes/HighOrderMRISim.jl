@@ -3,8 +3,10 @@
 # ------------------------------------------------------------
 brainphantom = BrainPhantom(prefix="brain3D", x=0.5, y=0.5, z=0.5)
 
-target_res    = (1., 1., 1.) .* 1e-3        # voxel resolution [m]
-target_matrix = (180, 180, 80)              # image matrix size
+# Reuse these sequence-defined values when exporting reconstruction inputs.
+target_matrix = Tuple(Int.(seq.DEF["MatrixSize"]))
+target_fov = Tuple(Float64.(seq.DEF["FOV"]))
+target_res = target_fov ./ target_matrix
 location      = (0., 0., 20.) .* 1e-3       # center location of the sampled volume [m]
 offcenter     = (0., 0., 0.) .* 1e-3        # off-center shift [m]
 
