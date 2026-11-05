@@ -35,6 +35,15 @@ Coil-map tests include analytic complex-field interpolation in Float32/Float64,
 outer half-voxel face/edge/corner extension, zero output beyond the source FOV,
 zero-norm preservation, and the previously blind real-map boundary region.
 
+### GitHub CPU CI
+
+The [CPU workflow](../.github/workflows/cpu-ci.yml) runs on pushes and pull
+requests targeting `main` or `dev`. It uses Julia 1.12 on Ubuntu, a fresh Julia
+depot, and Matplotlib with the non-interactive `Agg` backend. It runs
+`Pkg.instantiate()` and `Pkg.test()` from the package checkout, without loading a
+user environment or requiring reconstruction packages. The single- and multi-GPU
+suites below remain explicit tests outside this workflow.
+
 ## Explicit GPU suite
 
 Expose exactly one physical GPU by UUID before starting Julia. The process-local

@@ -1,0 +1,54 @@
+name: CPU CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Julia 1.12 CPU tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CUDA_VISIBLE_DEVICES: ''
+      JULIA_CI: 'true'
+      JULIA_LOAD_PATH: '@:@stdlib'
+      JULIA_NUM_THREADS: '4'
+      JULIA_NUM_PRECOMPILE_TASKS: '2'
+      OPENBLAS_NUM_THREADS: '1'
+      MPLBACKEND: Agg
+      PYTHONNOUSERSITE: '1'
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1.12'
+
+      - uses: actions/setup-python@v7
+        id: python
+        with:
+          python-version: '3.12'
+
+      - name: Configure headless plotting and a clean Julia depot
+        env:
+          PYTHON: ${{ steps.python.outputs.python-path }}
+        run: |
+          "$PYTHON" -m pip install matplotlib
+          printf 'PYTHON=%s\n' "$PYTHON" >> "$GITHUB_ENV"
+          printf 'JULIA_DEPOT_PATH=%s/highordermrisim-depot:\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+
+      - name: Instantiate the package environment
+        run: julia --startup-file=no --project=. -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Run the CPU package tests
+        run: julia --startup-file=no --project=. -e 'using Pkg; Pkg.test()'
