@@ -17,10 +17,8 @@ julia --startup-file=no --project=demo -e 'using Pkg; Pkg.instantiate()'
 
 The demo manifest pins HighOrderMRISim at `087f1b8` and HighOrderMRI at
 `245e430`, including its `MRIGeometry` subpackage. The simulator pin predates
-the version-only change to 0.2.0 and preserves the validated code. While the
-simulator repository is private, its HTTPS URL requires GitHub credentials
-with read access. If your credentials are configured through the system Git
-helper, set `JULIA_PKG_USE_CLI_GIT=true` for the install command.
+the version-only change to 0.2.0 and preserves the validated code. The pinned
+dependencies use public HTTPS repositories.
 
 ## Run simulation and reconstruction
 
