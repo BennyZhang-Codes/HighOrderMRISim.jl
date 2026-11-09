@@ -1,0 +1,10 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+HighOrderMRISim = "6437142c-3aa9-4303-9277-bb0012cca490"
+
+[sources]
+HighOrderMRISim = {path = ".."}
+
+[compat]
+Documenter = "1"
+julia = "1.12"
