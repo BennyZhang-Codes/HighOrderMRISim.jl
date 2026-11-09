@@ -51,6 +51,12 @@ Program #605-02-004.
 
 BibTeX entries: [CITATION.bib](CITATION.bib).
 
+## Documentation
+
+Read the [stable manual](https://bennyzhang-codes.github.io/HighOrderMRISim.jl/stable/)
+for the latest release or the [development manual](https://bennyzhang-codes.github.io/HighOrderMRISim.jl/dev/)
+for the `dev` branch. Use the version selector to browse archived releases.
+
 ## Installation
 
 Use Julia 1.12. Install the latest code from the default branch (`main`)
@@ -120,7 +126,7 @@ julia --startup-file=no --project=demo demo3D/4_recon.jl
 Results are saved under `output/`. The 2D demo uses LowRank reconstruction; the
 3D demo uses kernel reconstruction.
 
-See [documentation](docs/README.md) to build the manual locally and
+See [local documentation builds](docs/README.md) and
 [package tests](test/README.md) for validation details.
 
 ## License
