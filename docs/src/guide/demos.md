@@ -8,8 +8,8 @@ sequence-defined grid, receive maps, and field encoding.
 ## Install the pinned demo environment
 
 Set up Python, Matplotlib, and the isolated Julia depot as in
-[Getting Started](@ref). For the demos, use `demo/` instead of the root Julia
-project. From the repository root, run:
+[Getting Started](../getting-started.md). For the demos, use `demo/` instead of
+the root Julia project. From the repository root, run:
 
 ```bash
 julia --startup-file=no --project=demo -e 'using Pkg; Pkg.instantiate()'

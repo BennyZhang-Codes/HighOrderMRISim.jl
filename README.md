@@ -4,40 +4,67 @@
 [![KomaMRI 0.15](https://img.shields.io/badge/KomaMRI-0.15-0B7285)](https://github.com/JuliaHealth/KomaMRI.jl)
 [![Documentation](https://img.shields.io/badge/Docs-local_build-007EC6)](docs/README.md)
 
-HighOrderMRISim.jl is a Julia package for high-order MRI signal simulation
-built on [KomaMRI.jl](https://github.com/JuliaHealth/KomaMRI.jl).
+HighOrderMRISim.jl is a Julia package for MRI signal simulation with time-varying,
+higher-order magnetic fields. Built on
+[KomaMRI.jl](https://github.com/JuliaHealth/KomaMRI.jl), it extends Bloch simulation
+with field terms through third-order spherical harmonics and multi-coil signal
+reception, allowing users to study the effects of field dynamics on MRI signals
+and images. The package supports CPU and CUDA-accelerated single- and multi-GPU
+execution, with 2D and 3D spiral demos linking simulation to reconstruction through
+[HighOrderMRI.jl](https://github.com/BennyZhang-Codes/HighOrderMRI.jl).
 
 ## Features
 
 - Time-varying magnetic fields through third spatial order.
 - CPU simulation and CUDA kernels for single- and multi-GPU execution.
-- 2D and 3D spiral demos with reconstruction via
-  [HighOrderMRI.jl](https://github.com/BennyZhang-Codes/HighOrderMRI.jl).
+- CUDA-accelerated high-order reconstruction through the companion
+  [HighOrderMRI.jl](https://github.com/BennyZhang-Codes/HighOrderMRI.jl) package:
+  `HighOrderKernelOp` for explicit encoding and
+  `HighOrderLowRankOp` for low-rank/NFFT-based encoding.
+- End-to-end 2D and 3D spiral simulation and reconstruction demos.
+
+## Citation
+
+The high-order simulation implementation originated in
+[DataStitching](https://github.com/BennyZhang-Codes/DataStitching).
+For the original method, please cite:
+
+Zhang J, Zhang Z, Zuo Z, Xue R, Zhuo Y, Cushing C, Bratch A, Auerbach E,
+Grant A, An J, Ugurbil K, Wu X. Data stitching for dynamic field monitoring
+with NMR probes. *Magnetic Resonance in Medicine*. 2026;95(4):1944–1958.
+[doi:10.1002/mrm.70164](https://doi.org/10.1002/mrm.70164).
+
+Related workshop abstract:
+
+Zhang J, Jaffray A, Qu S, Cushing C, Xue R, Ugurbil K, Rauscher A, Zhang Z,
+Wu X. High Impact Project: A comprehensive open-source framework for high-order
+MRI. In: *Proceedings of the 2026 ISMRM Workshop on Data Sampling and Image
+Reconstruction*, Sedona, AZ, United States of America. Program #302-01-055.
+
+Related work:
+
+Zhang J, Zhen T, Li S, Zuo Z, Cushing C, An J, Xue R, Zhuo Y, Ugurbil K,
+Wu X, Zhang Z. Generalized data stitching for dynamic field monitoring with NMR
+probes: improving acquisition efficiency and accuracy. In: *Proceedings of the
+2026 ISMRM-ISMRT Annual Meeting and Exhibition*, Cape Town, South Africa.
+Program #605-02-004.
+
+BibTeX entries: [CITATION.bib](CITATION.bib).
 
 ## Installation
 
-Use Julia 1.12 and Python 3.12 with `venv` and a shared `libpython`. Clone the
-repository and set up local dependencies without changing your default Julia
-environment:
+Use Julia 1.12. Install the latest code from the default branch (`main`)
+in your Julia project:
 
-```bash
-git clone https://github.com/BennyZhang-Codes/HighOrderMRISim.jl.git
-cd HighOrderMRISim.jl
-
-python3.12 -m venv local/demo-python
-local/demo-python/bin/python -m pip install 'matplotlib==3.11.2'
-
-export PYTHON="$PWD/local/demo-python/bin/python" PYTHONNOUSERSITE=1 MPLBACKEND=Agg
-export JULIA_DEPOT_PATH="$PWD/local/demo-depot:" JULIA_LOAD_PATH='@:@stdlib'
-export OPENBLAS_NUM_THREADS=1
+```julia
+using Pkg
+Pkg.add(url="https://github.com/BennyZhang-Codes/HighOrderMRISim.jl.git")
+using HighOrderMRISim
 ```
 
-To use the simulator on its own, install and launch it from the root project:
-
-```bash
-julia --startup-file=no --project=. -e 'using Pkg; Pkg.instantiate()'
-julia --startup-file=no --project=.
-```
+For GPU use, also add CUDA to the same project with `Pkg.add("CUDA")`.
+See [Getting Started](docs/src/getting-started.md#install-from-a-checkout)
+for detailed environment and plotting setup.
 
 ## Usage
 
@@ -59,9 +86,18 @@ simulation.
 
 ### Run the demos
 
-The demos use a [separate Julia environment](demo/Project.toml) with pinned
-simulation and reconstruction dependencies. Install it once in the same shell
-instead of installing the root project.
+The full demos require a CUDA-capable NVIDIA GPU and use a
+[separate Julia environment](demo/Project.toml) with pinned dependencies.
+See the [demo guide](docs/src/guide/demos.md) for setup and validation. First,
+clone the repository:
+
+```bash
+git clone https://github.com/BennyZhang-Codes/HighOrderMRISim.jl.git
+cd HighOrderMRISim.jl
+```
+
+Complete the [environment setup](docs/src/getting-started.md#install-from-a-checkout),
+then install the demo dependencies:
 
 ```bash
 julia --startup-file=no --project=demo -e 'using Pkg; Pkg.instantiate()'
@@ -89,4 +125,5 @@ See [documentation](docs/README.md) to build the manual locally and
 
 ## License
 
-[LICENSE](LICENSE)
+[LICENSE](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md) ·
+[Data sources and pending confirmations](DATA_SOURCES.md)
