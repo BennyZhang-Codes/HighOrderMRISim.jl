@@ -1,7 +1,8 @@
 # Build the documentation locally
 
 Use Julia 1.12. From the repository root, set up Python and Matplotlib as
-described in the [package README](../README.md#installation). Then run:
+described in [Getting Started](src/getting-started.md#install-from-a-checkout).
+Then run:
 
 ```bash
 export JULIA_LOAD_PATH='@:@stdlib'
