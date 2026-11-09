@@ -35,9 +35,10 @@ end
     Loads the Real Coil-Sensitivity Map (32 channels) of the phantom and resamples it 
     to the specified target resolution and matrix size at a given physical location.
     Linear B-spline interpolation is applied to the spatial dimensions, while the coil 
-    channel dimension is preserved. Out-of-bounds values are set to 0, and the resulting 
-    coil-sensitivity map is normalized at each voxel such that the sum of squared magnitudes 
-    across channels equals 1.  
+    channel dimension is preserved. Edge samples extend to the outer faces of their
+    source voxels (half a source voxel beyond the outermost centres). Coordinates
+    beyond that physical FOV are set to zero. Nonzero receive vectors are normalized
+    to unit summed squared magnitude; source zeros remain zero.
 
 # Arguments
 - `target_res::Tuple{Float64,Float64,Float64}`: target voxel size in meters `(dx, dy, dz)`  
@@ -67,37 +68,44 @@ function csm_Real_32cha(
         @info "loading Real Coil-Sensitivity Map (32 channels)..."
     end
     data = MAT.matread("$(@__DIR__)/csm_4p0.mat")["csm"]
-    x, y, z, nCha = size(data)
+    return _resample_csm(data, (4e-3, 4e-3, 4e-3), target_res, target_matrix, location)
+end
 
-    matrix_size = (x, y, z)
-    phantom_res = (4., 4., 4.) .* 1e-3 # in meters
+# Clamp only within the outer source voxel cells, not arbitrarily far outside
+# the measured map. Keeping resampling separate from file loading permits small
+# analytic boundary tests without replacing the bundled receive-map data.
+function _resample_csm(
+    data::AbstractArray{<:Number,4}, source_res::NTuple{3,<:Real},
+    target_res::NTuple{3,T}, target_matrix::NTuple{3,<:Integer}, location::NTuple{3,T},
+) where {T<:AbstractFloat}
+    source_axes = ntuple(3) do axis
+        n = size(data, axis)
+        ((0:n-1) .- (n-1)/2) .* source_res[axis]
+    end
+    target_axes = ntuple(3) do axis
+        n = target_matrix[axis]
+        ((0:n-1) .- (n-1)/2) .* target_res[axis] .+ location[axis]
+    end
+    valid = ntuple(axis -> abs.(target_axes[axis]) .<= T(size(data, axis)*source_res[axis]/2), 3)
+    coordinates = ntuple(axis -> clamp.(target_axes[axis],
+        first(source_axes[axis]), last(source_axes[axis])), 3)
+    out = zeros(Complex{T}, target_matrix..., size(data, 4))
 
-    x_grid = ((0:matrix_size[1]-1) .- (matrix_size[1]-1)/2) .* phantom_res[1]
-    y_grid = ((0:matrix_size[2]-1) .- (matrix_size[2]-1)/2) .* phantom_res[2]
-    z_grid = ((0:matrix_size[3]-1) .- (matrix_size[3]-1)/2) .* phantom_res[3]
-
-    x_grid_new = ((0:target_matrix[1]-1) .- (target_matrix[1]-1)/2) .* target_res[1] .+ location[1]
-    y_grid_new = ((0:target_matrix[2]-1) .- (target_matrix[2]-1)/2) .* target_res[2] .+ location[2]
-    z_grid_new = ((0:target_matrix[3]-1) .- (target_matrix[3]-1)/2) .* target_res[3] .+ location[3]
-
-    out = Array{Complex{T}}(undef, target_matrix..., nCha)
-
-    for c in 1:nCha
+    for c in axes(data, 4)
         real_itp = interpolate(real(data[:,:,:,c]), BSpline(Linear()), OnGrid())
         imag_itp = interpolate(imag(data[:,:,:,c]), BSpline(Linear()), OnGrid())
-        real_itp = scale(real_itp, x_grid, y_grid, z_grid)
-        imag_itp = scale(imag_itp, x_grid, y_grid, z_grid)
-        real_itp = extrapolate(real_itp, 0)
-        imag_itp = extrapolate(imag_itp, 0)
+        real_itp = scale(real_itp, source_axes...)
+        imag_itp = scale(imag_itp, source_axes...)
 
-        for xi in eachindex(x_grid_new), yi in eachindex(y_grid_new), zi in eachindex(z_grid_new)
-            out[xi, yi, zi, c] = real_itp(x_grid_new[xi], y_grid_new[yi], z_grid_new[zi]) +
-                                1im * imag_itp(x_grid_new[xi], y_grid_new[yi], z_grid_new[zi])
+        for zi in eachindex(target_axes[3]), yi in eachindex(target_axes[2]), xi in eachindex(target_axes[1])
+            if valid[1][xi] && valid[2][yi] && valid[3][zi]
+                point = (coordinates[1][xi], coordinates[2][yi], coordinates[3][zi])
+                out[xi, yi, zi, c] = real_itp(point...) + 1im*imag_itp(point...)
+            end
         end
     end
 
-    norm = sqrt.(sum(abs.(out) .^ 2, dims=4))
-    out .= out./ norm
-    out[isnan.(out)] .= 0 + 0im
+    coil_norm = sqrt.(sum(abs.(out) .^ 2; dims=4))
+    out ./= ifelse.(iszero.(coil_norm), one(T), coil_norm)
     return out
 end

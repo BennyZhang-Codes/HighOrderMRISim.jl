@@ -1,3 +1,6 @@
+# Recognize the default static model by identity, never by sampling a custom function.
+no_displacement(x, y, z, t) = 0
+
 """
     obj = HO_Phantom(name, x, y, z, ρ, T1, T2, T2s, Δw, Dλ1, Dλ2, Dθ, ux, uy, uz, csm)
 
@@ -51,9 +54,9 @@ Base.@kwdef mutable struct HO_Phantom{T<:Real}
 	Dθ::AbstractVector{T} =  zeros(size(x))
 	#Diff::Vector{DiffusionModel}  #Diffusion map
 	#Motion
-	ux::Function = (x,y,z,t)->0
-	uy::Function = (x,y,z,t)->0
-	uz::Function = (x,y,z,t)->0
+	ux::Function = no_displacement
+	uy::Function = no_displacement
+	uz::Function = no_displacement
     #Coil-Sensitivity
     csm::AbstractArray{Complex{T}, 2} = zeros(size(x), 1)
 end

@@ -1,0 +1,79 @@
+name: CPU CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+    inputs:
+      cold_depot:
+        description: Run without the Julia depot cache
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Julia 1.12 CPU tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CUDA_VISIBLE_DEVICES: ''
+      JULIA_CI: 'true'
+      JULIA_LOAD_PATH: '@:@stdlib'
+      # Reuse package images across runners with different CPU models.
+      JULIA_CPU_TARGET: generic
+      JULIA_NUM_THREADS: '4'
+      JULIA_NUM_PRECOMPILE_TASKS: '2'
+      OPENBLAS_NUM_THREADS: '1'
+      MPLBACKEND: Agg
+      PYTHONNOUSERSITE: '1'
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: julia-actions/setup-julia@v3
+        id: julia
+        with:
+          version: '1.12'
+
+      - uses: actions/setup-python@v7
+        id: python
+        with:
+          python-version: '3.12'
+
+      - name: Configure headless plotting and an isolated Julia depot
+        id: depot
+        env:
+          PYTHON: ${{ steps.python.outputs.python-path }}
+        run: |
+          "$PYTHON" -m pip install matplotlib
+          printf 'PYTHON=%s\n' "$PYTHON" >> "$GITHUB_ENV"
+          depot="$RUNNER_TEMP/highordermrisim-depot"
+          printf 'JULIA_DEPOT_PATH=%s:\n' "$depot" >> "$GITHUB_ENV"
+          printf 'path=%s\n' "$depot" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Julia dependencies and package images
+        if: ${{ !inputs.cold_depot }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ steps.depot.outputs.path }}/artifacts
+            ${{ steps.depot.outputs.path }}/compiled
+            ${{ steps.depot.outputs.path }}/packages
+            ${{ steps.depot.outputs.path }}/registries
+          key: cpu-julia-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.julia.outputs.julia-version }}-py${{ steps.python.outputs.python-version }}-${{ hashFiles('Project.toml', 'Manifest.toml') }}
+
+      - name: Instantiate the package environment
+        env:
+          # Precompile in the test environment with its bounds-check settings.
+          JULIA_PKG_PRECOMPILE_AUTO: '0'
+        run: julia --startup-file=no --project=. -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Run the CPU package tests
+        run: julia --startup-file=no --project=. -e 'using Pkg; Pkg.test()'

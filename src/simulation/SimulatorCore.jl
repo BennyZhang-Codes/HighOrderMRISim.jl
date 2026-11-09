@@ -25,7 +25,7 @@ function run_spin_precession_parallel!(obj::HO_Phantom{T}, hoseqd::HO_DiscreteSe
     Nthreads=Threads.nthreads()) where {T<:Real}
 
     parts = kfoldperm(length(obj), Nthreads)
-    dims = [Colon() for i=1:output_Ndim(sim_method)] # :,:,:,... Ndim times
+    dims = ntuple(_ -> Colon(), ndims(sig) - 1)
 
     ThreadsX.foreach(enumerate(parts)) do (i, p)
         run_spin_precession!(@view(obj[p]), hoseqd, @view(sig[dims...,i]), @view(Xt[p]), sim_method)
@@ -58,7 +58,7 @@ function run_spin_excitation_parallel!(obj::HO_Phantom{T}, hoseqd::HO_DiscreteSe
     Nthreads=Threads.nthreads()) where {T<:Real}
 
     parts = kfoldperm(length(obj), Nthreads)
-    dims = [Colon() for i=1:output_Ndim(sim_method)] # :,:,:,... Ndim times
+    dims = ntuple(_ -> Colon(), ndims(sig) - 1)
 
     ThreadsX.foreach(enumerate(parts)) do (i, p)
         run_spin_excitation!(@view(obj[p]), hoseqd, @view(sig[dims...,i]), @view(Xt[p]), sim_method)
@@ -95,29 +95,58 @@ take advantage of CPU parallel processing.
 """
 function run_sim_time_iter!(obj::HO_Phantom, hoseqd::HO_DiscreteSequence, sig::AbstractArray{Complex{T}},
     Xt::SpinStateRepresentation{T}, sim_method::SimulationMethod;
-    Nblocks=1, Nthreads=Threads.nthreads(), parts=[1:length(hoseqd)], excitation_bool=ones(Bool, size(parts)), w=nothing) where {T<:Real}
+    Nblocks=1, Nthreads=Threads.nthreads(), parts=[1:length(hoseqd.seqd.t)],
+    excitation_bool=ones(Bool, size(parts)), adc_counts=nothing, backend=nothing, workspace=nothing,
+    verbose=true, callbacks=(), sim_params=Dict{String,Any}(), w=nothing,
+    sequence_blocks=nothing, signal_blocks=nothing) where {T<:Real}
     # Simulation
     rfs = 0
     samples = 1
-    progress_bar = Progress(Nblocks)
+    isnothing(w) || @warn "Blink progress windows are no longer supported; use callbacks."
+    progress_bar = verbose ? Progress(Nblocks) : nothing
+    policy = get(sim_params, "synchronization", "auto")
+    policy in ("auto", "block") || throw(ArgumentError("synchronization must be auto or block."))
+    # Array execution retains its original fences. Kernel-only runs without
+    # callbacks are stream-ordered; callbacks must observe completed block data.
+    fence_blocks = policy == "block" || !isempty(callbacks) || isnothing(workspace)
     for (block, p) = enumerate(parts)
-        seq_block = @view hoseqd[p]
+        seq_block = isnothing(sequence_blocks) ? view(hoseqd, p) : sequence_blocks[block]
         # Params
-        # excitation_bool = is_RF_on(seq_block) #&& is_ADC_off(seq_block) #PATCH: the ADC part should not be necessary, but sometimes 1 sample is identified as RF in an ADC block
-        Nadc = sum(seq_block.seqd.ADC)
+        # Adjacent ranges share a time point. Its ADC belongs to the previous block.
+        Nadc = isnothing(adc_counts) ? count(cpu(seq_block.seqd.ADC[2:end])) : adc_counts[block]
         acq_samples = samples:samples+Nadc-1
-        dims = [Colon() for i=1:output_Ndim(sim_method)] # :,:,:,... Ndim times
+        dims = ntuple(_ -> Colon(), ndims(sig) - 1)
         # Simulation wrappers
+        kernel_signal = isnothing(workspace) ? nothing :
+            (isnothing(signal_blocks) ? view(sig, acq_samples, :, 1) : signal_blocks[block])
         if excitation_bool[block]
-            run_spin_excitation_parallel!(obj, seq_block, @view(sig[acq_samples, dims...]), Xt, sim_method; Nthreads)
+            if isnothing(workspace)
+                run_spin_excitation_parallel!(obj, seq_block, @view(sig[acq_samples, dims...]), Xt, sim_method; Nthreads)
+            else
+                run_high_order_excitation!(workspace, obj, seq_block, kernel_signal, Xt, sim_method)
+            end
             rfs += 1
         else
-            run_spin_precession_parallel!(obj, seq_block, @view(sig[acq_samples, dims...]), Xt, sim_method; Nthreads)
+            if isnothing(workspace)
+                run_spin_precession_parallel!(obj, seq_block, @view(sig[acq_samples, dims...]), Xt, sim_method; Nthreads)
+            else
+                run_high_order_precession!(workspace, obj, seq_block, kernel_signal, Xt, sim_method)
+            end
+        end
+        if !isnothing(backend) && (fence_blocks || block == length(parts))
+            KomaMRICore.KA.synchronize(backend)
         end
         samples += Nadc
         #Update progress
-        next!(progress_bar, showvalues=[(:simulated_blocks, block), (:rf_blocks, rfs), (:acq_samples, samples-1)])
-        KomaMRICore.update_blink_window_progress!(w, block, Nblocks)
+        if verbose
+            next!(progress_bar, showvalues=[(:simulated_blocks, block), (:rf_blocks, rfs), (:acq_samples, samples-1)])
+        end
+        progress_info = (; block, Nblocks, rfs, samples)
+        simulation_blocks_info = (; excitation_bool, parts)
+        device_data = (; obj, seqd=hoseqd, sig, Xt)
+        for callback in callbacks
+            callback(progress_info, simulation_blocks_info, device_data, sim_params)
+        end
     end
     return nothing
 end

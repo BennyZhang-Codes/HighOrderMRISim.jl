@@ -1,4 +1,4 @@
-import KomaMRI.KomaMRIBase: discretize, get_rfs, default_sampling_params, get_variable_times
+import KomaMRIBase: discretize
 
 """
     seqd = HO_DiscreteSequence(seqd, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14, h15)
@@ -28,119 +28,151 @@ times. DiscreteSequence is the struct used for simulation.
 # Returns
 - `hoseqd`: (`::HO_DiscreteSequence`) HO_DiscreteSequence struct
 """
-struct HO_DiscreteSequence{T<:Real}
-    seqd::DiscreteSequence{T}
-    h0::AbstractVector{T}
-    h1::AbstractVector{T}
-    h2::AbstractVector{T}
-    h3::AbstractVector{T}
-    h4::AbstractVector{T}
-    h5::AbstractVector{T}
-    h6::AbstractVector{T}
-    h7::AbstractVector{T}
-    h8::AbstractVector{T}
-    h9::AbstractVector{T}
-    h10::AbstractVector{T}
-    h11::AbstractVector{T}
-    h12::AbstractVector{T}
-    h13::AbstractVector{T}
-    h14::AbstractVector{T}
-    h15::AbstractVector{T}
+struct HO_DiscreteSequence{T<:Real,S<:DiscreteSequence{T},H<:AbstractVector{T}}
+    seqd::S
+    h0::H
+    h1::H
+    h2::H
+    h3::H
+    h4::H
+    h5::H
+    h6::H
+    h7::H
+    h8::H
+    h9::H
+    h10::H
+    h11::H
+    h12::H
+    h13::H
+    h14::H
+    h15::H
 end
+
+function HO_DiscreteSequence(seqd::S, fields::Vararg{AbstractVector{T},16}) where {T,S<:DiscreteSequence{T}}
+    # Ordinary homogeneous CPU/CUDA storage stays concrete. Mixed vector
+    # implementations retain the generality of the former abstract fields.
+    H = foldl(typejoin, map(typeof, fields))
+    return HO_DiscreteSequence{T,S,H}(seqd, fields...)
+end
+HO_DiscreteSequence{T}(seqd::DiscreteSequence{T}, fields::Vararg{AbstractVector{T},16}) where {T} =
+    HO_DiscreteSequence(seqd, fields...)
 @functor HO_DiscreteSequence
 
-Base.length(hoseqd::HO_DiscreteSequence) = length(hoseqd.seqd.Δt)
-Base.getindex(hoseqd::HO_DiscreteSequence, i::Integer) = begin
-    HO_DiscreteSequence(hoseqd.seqd[i],
-                        hoseqd.h0[i, :],
-                        hoseqd.h1[i, :],
-                        hoseqd.h2[i, :],
-                        hoseqd.h3[i, :],
-                        hoseqd.h4[i, :],
-                        hoseqd.h5[i, :],
-                        hoseqd.h6[i, :],
-                        hoseqd.h7[i, :],
-                        hoseqd.h8[i, :],
-                        hoseqd.h9[i, :],
-                        hoseqd.h10[i, :],
-                        hoseqd.h11[i, :],
-                        hoseqd.h12[i, :],
-                        hoseqd.h13[i, :],
-                        hoseqd.h14[i, :],
-                        hoseqd.h15[i, :]
-                        )
+@inline high_order_coefficients(hoseqd::HO_DiscreteSequence) =
+    ntuple(i -> getfield(hoseqd, i+1), Val(16))
+
+Base.length(hoseqd::HO_DiscreteSequence) = length(hoseqd.seqd)
+Base.getindex(hoseqd::HO_DiscreteSequence, i::Integer) =
+    HO_DiscreteSequence(hoseqd.seqd[i], ntuple(Val(16)) do term
+        getfield(hoseqd, term+1)[i:i]
+    end...)
+Base.getindex(hoseqd::HO_DiscreteSequence, nodes::UnitRange) =
+    HO_DiscreteSequence(hoseqd.seqd[nodes], ntuple(Val(16)) do term
+        getfield(hoseqd, term+1)[nodes]
+    end...)
+Base.view(hoseqd::HO_DiscreteSequence, nodes::UnitRange) =
+    HO_DiscreteSequence(view(hoseqd.seqd, nodes), ntuple(Val(16)) do term
+        view(getfield(hoseqd, term+1), nodes)
+    end...)
+Base.iterate(hoseqd::HO_DiscreteSequence) =
+    isempty(hoseqd.seqd.Δt) ? nothing : (hoseqd[1], 2)
+Base.iterate(hoseqd::HO_DiscreteSequence, i) =
+    i <= length(hoseqd) ? (hoseqd[i], i + 1) : nothing
+
+function high_order_sampling_rule(params)
+    return get(params, "sampling_rule") do
+        MaxStepSizeRule(
+            get(params, "Δt", 1e-3), get(params, "Δt_rf", 5e-5);
+            preserve_samples=get(params, "preserve_samples", (:gradients, :rf_center)),
+        )
+    end
 end
-Base.getindex(hoseqd::HO_DiscreteSequence, i::UnitRange) = begin
-    HO_DiscreteSequence(hoseqd.seqd[i.start:i.stop],
-                        hoseqd.h0[i.start:i.stop+1],
-                        hoseqd.h1[i.start:i.stop+1],
-                        hoseqd.h2[i.start:i.stop+1],
-                        hoseqd.h3[i.start:i.stop+1],
-                        hoseqd.h4[i.start:i.stop+1],
-                        hoseqd.h5[i.start:i.stop+1],
-                        hoseqd.h6[i.start:i.stop+1],
-                        hoseqd.h7[i.start:i.stop+1],
-                        hoseqd.h8[i.start:i.stop+1],
-                        hoseqd.h9[i.start:i.stop+1],
-                        hoseqd.h10[i.start:i.stop+1],
-                        hoseqd.h11[i.start:i.stop+1],
-                        hoseqd.h12[i.start:i.stop+1],
-                        hoseqd.h13[i.start:i.stop+1],
-                        hoseqd.h14[i.start:i.stop+1],
-                        hoseqd.h15[i.start:i.stop+1]
-                        )
+
+# Keep Koma's boundary convention, but only merge samples when the high-order
+# coefficients also agree. A field jump must retain both sides at the same time.
+function append_high_order_block!(out, fields, values, coefficients, t0)
+    isempty(values.t) && return nothing
+    first_t = t0 + first(values.t)
+    if !isempty(out.t) && KomaMRIBase.same_sampling_time(first_t, last(out.t))
+        first_t = last(out.t)
+    end
+    first_row = firstindex(values.t)
+    if isempty(out.t)
+        KomaMRIBase.append_adc_start_padding!(out, values, first_t)
+        if !isempty(out.t)
+            foreach((dst, src) -> push!(dst, first(src)), fields, coefficients)
+        end
+    elseif first_t == last(out.t) &&
+            KomaMRIBase.same_boundary_sample(out, values) &&
+            all(last(dst) == first(src) for (dst, src) in zip(fields, coefficients))
+        first_row += 1
+    else
+        push!(out.Δt, first_t - last(out.t))
+        push!(out.excitation_bool, false)
+    end
+    rows = first_row:lastindex(values.t)
+    for t in view(values.t, rows)
+        push!(out.t, t == first(values.t) ? first_t : t0 + t)
+    end
+    foreach(
+        (dst, src) -> append!(dst, view(src, rows)),
+        KomaMRIBase.table_columns(out), KomaMRIBase.table_columns(values),
+    )
+    foreach((dst, src) -> append!(dst, view(src, rows)), fields, coefficients)
+    append!(out.Δt, values.Δt)
+    append!(out.excitation_bool, values.excitation_bool)
+    return nothing
 end
-Base.view(hoseqd::HO_DiscreteSequence, i::UnitRange) = begin
-    @views HO_DiscreteSequence(hoseqd.seqd[i.start:i.stop],
-                                hoseqd.h0[i.start:i.stop+1],
-                                hoseqd.h1[i.start:i.stop+1],
-                                hoseqd.h2[i.start:i.stop+1],
-                                hoseqd.h3[i.start:i.stop+1],
-                                hoseqd.h4[i.start:i.stop+1],
-                                hoseqd.h5[i.start:i.stop+1],
-                                hoseqd.h6[i.start:i.stop+1],
-                                hoseqd.h7[i.start:i.stop+1],
-                                hoseqd.h8[i.start:i.stop+1],
-                                hoseqd.h9[i.start:i.stop+1],
-                                hoseqd.h10[i.start:i.stop+1],
-                                hoseqd.h11[i.start:i.stop+1],
-                                hoseqd.h12[i.start:i.stop+1],
-                                hoseqd.h13[i.start:i.stop+1],
-                                hoseqd.h14[i.start:i.stop+1],
-                                hoseqd.h15[i.start:i.stop+1]
-                                )
-end
-Base.iterate(hoseqd::HO_DiscreteSequence) = (hoseqd[1], 2)
-Base.iterate(hoseqd::HO_DiscreteSequence, i) = (i <= length(hoseqd)) ? (hoseqd[i], i+1) : nothing
 
 """
-    hoseqd = discretize(hoseq::HO_Sequence; sampling_params=default_sampling_params())
+    discretize(hoseq::HO_Sequence; sampling_params=Dict(), sampling_rule=nothing,
+               freq_in_phase=false)
 
-# Description
-    This function returns a sampled Sequence struct with RF and gradient time refinements
-based on simulation parameters.
-
-# Arguments
-- `hoseq`: (`::HO_Sequence`) sequence
-
-# Keywords
-- `sampling_params`: (`::Dict{String, Any}`, `=default_sampling_params()`) sampling
-    parameter dictionary
-
-# Returns
-- `hoseqd`: (`::HO_DiscreteSequence`) HO_DiscreteSequence struct
+Sample native sequence events and all sixteen high-order waveforms on one grid.
+The legacy `sampling_params` dictionary remains supported. An explicit
+`sampling_rule` takes precedence. Repeated times preserve field discontinuities.
+Each field has one value per time point; `Δt` has one value per interval.
 """
-function discretize(hoseq::HO_Sequence; sampling_params=default_sampling_params())::HO_DiscreteSequence
-    t, Δt      = get_variable_times(hoseq.SEQ; Δt=sampling_params["Δt"], Δt_rf=sampling_params["Δt_rf"])
-    B1, Δf     = get_rfs(hoseq.SEQ, t)
-    Gx, Gy, Gz = get_grads(hoseq.SEQ, t)
-    tadc       = get_adc_sampling_times(hoseq.SEQ)
-    ADCflag    = [any(tt .== tadc) for tt in t] #Displaced 1 dt, sig[i]=S(ti+dt)
-    seqd       = DiscreteSequence(Gx, Gy, Gz, complex.(B1), Δf, ADCflag, t, Δt)
-    H0, H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15 = get_grads(hoseq, t)
-    hoseqd = HO_DiscreteSequence(seqd, H0, H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15)
-    return hoseqd
+function discretize(
+    hoseq::HO_Sequence; sampling_params=Dict{String,Any}(),
+    sampling_rule=nothing,
+    freq_in_phase=get(sampling_params, "freq_in_phase", false),
+)::HO_DiscreteSequence
+    rule = isnothing(sampling_rule) ? high_order_sampling_rule(sampling_params) : sampling_rule
+    seq = simulation_sequence(hoseq)
+    starts = get_block_start_times(seq)
+    out = DiscreteSequence()
+    fields = ntuple(_ -> Float64[], 16)
+    maxdt = rule isa MaxStepSizeRule ? rule.Δt : get(sampling_params, "Δt", Inf)
+    for block in 1:length(seq)
+        waveforms = KomaMRIBase.block_event_waveforms(seq, block; freq_in_phase)
+        high_order = ntuple(term -> KomaMRIBase.event_samples(hoseq.GR_dfc[term, block]), 16)
+        boundaries = [0.0, seq.DUR[block]]
+        KomaMRIBase.align_sampling_times!(
+            (w.t for w in values(waveforms))...,
+            (w.t for w in high_order)..., boundaries,
+        )
+        key_times = KomaMRIBase.merge_sampling_times(
+            boundaries, (w.t for w in high_order)...,
+        )
+        extra_times = Float64[]
+        for waveform in high_order
+            KomaMRIBase.append_max_step_sampling_times!(
+                extra_times, key_times, waveform.t, maxdt,
+            )
+        end
+        key_times = KomaMRIBase.merge_sampling_times(key_times, unique!(sort!(extra_times)))
+        eval_times = KomaMRIBase.block_sampling_times(
+            seq, block; sampling_rule=rule, waveforms, motion_times=key_times,
+        )
+        sampled = KomaMRIBase.sample_sequence_block(
+            waveforms, eval_times;
+            rf_center=KomaMRIBase.rf_center_time(seq.RF[1, block]), freq_in_phase,
+        )
+        coefficients = map(high_order) do waveform
+            KomaMRIBase.linear_interpolate_samples(waveform, eval_times; default=0.0)
+        end
+        append_high_order_block!(out, fields, sampled, coefficients, starts[block])
+    end
+    return HO_DiscreteSequence(out, fields...)
 end
-
-
-

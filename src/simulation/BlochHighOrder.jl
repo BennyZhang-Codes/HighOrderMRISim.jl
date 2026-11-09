@@ -1,7 +1,8 @@
 """
     BHO = BlochHighOrder(ho0, ho1, ho2, ho3, Δw_excitation, Δw_precession)
 
-a Simulation Method, which defines some parameters for the simulation with dynamic fields (up to second order).
+A simulation method for dynamic fields through third spatial order. High-order
+fields affect free precession; RF excitation retains the nominal-gradient model.
 
 # Arguments
 - `ho0`: (`::Bool`), zeroth order

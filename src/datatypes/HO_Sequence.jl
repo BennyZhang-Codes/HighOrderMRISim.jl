@@ -1,5 +1,5 @@
-import KomaMRI.KomaMRIBase: get_samples, get_theo_Gi, get_grads, get_kspace, get_theo_t, get_theo_A
-import KomaMRI.KomaMRIBase: is_Gx_on, is_Gy_on, is_Gz_on, is_ADC_on, is_RF_on
+import KomaMRIBase: get_samples, get_grads, get_kspace
+import KomaMRIBase: is_Gx_on, is_Gy_on, is_Gz_on, is_ADC_on, is_RF_on
 """
     hoseq = HO_Sequence()
     hoseq = HO_Sequence(GR_dfc::Array{Grad,2})
@@ -42,27 +42,28 @@ mutable struct HO_Sequence
 	DUR::Vector				  #Duration of each block, this enables delays after RF pulses to satisfy ring-down times
 	HO_Sequence(SEQ, GR_dfc, DUR) = begin
 		@assert size(SEQ)[1] .== size(GR_dfc, 2)  "The number of SEQ and GR_dfc objects must be the same."
-		# @assert size(GR_dfc, 1) .== 9 "The number of rows in the GR_dfc matrix must be 9."
 		M, N = size(GR_dfc)
+		1 <= M <= 16 || throw(ArgumentError("Expected 1 to 16 high-order field channels."))
 		new(SEQ,
-		    [i <= M ? GR_dfc[i,j] : Grad(0, 0) for i in 1:16, j in 1:N],
+		    Grad[i <= M ? GR_dfc[i,j] : Grad(0, 0) for i in 1:16, j in 1:N],
 			maximum([SEQ.DUR GR_dfc.dur DUR],dims=2)[:])
 	end
 end
 
 # Main Constructors
-function HO_Sequence(GR_dfc::Array{Grad,2})
+function HO_Sequence(GR_dfc::AbstractMatrix{<:Grad})
 	M, N = size(GR_dfc)
-    gr_dfc = [i <= M ? GR_dfc[i,j] : Grad(0, 0) for i in 1:16, j in 1:N]
-	M, N = size(gr_dfc[2:3,:])   
-	seq = Sequence([i <= M ? gr_dfc[i,j] : Grad(0, 0) for i in 1:3, j in 1:N])  # use DFC gradient to generate seq
+    1 <= M <= 16 || throw(ArgumentError("Expected 1 to 16 high-order field channels."))
+    gr_dfc = Grad[i <= M ? GR_dfc[i,j] : Grad(0, 0) for i in 1:16, j in 1:N]
+	seq = Sequence(gr_dfc[2:4, :])
 	dur = maximum([seq.DUR gr_dfc.dur],dims=2)[:]
     return HO_Sequence(seq, gr_dfc, dur)
 end
 
-function HO_Sequence(SEQ::Sequence, GR_dfc::Array{Grad,2})
+function HO_Sequence(SEQ::Sequence, GR_dfc::AbstractMatrix{<:Grad})
 	@assert size(SEQ)[1] .== size(GR_dfc, 2) "The number of SEQ and GR_dfc objects must be the same."
 	M, N = size(GR_dfc)
+    1 <= M <= 16 || throw(ArgumentError("Expected 1 to 16 high-order field channels."))
     gr_dfc = [i <= M ? GR_dfc[i,j] : Grad(0, 0) for i in 1:16, j in 1:N]
 	dur = maximum([SEQ.DUR gr_dfc.dur],dims=2)[:]
     return HO_Sequence(SEQ, gr_dfc, dur)
@@ -75,8 +76,8 @@ function HO_Sequence(SEQ::Sequence)
 end
 
 # Other constructors
-HO_Sequence(GR_dfc::Array{Grad,1}) = HO_Sequence(reshape(GR_dfc,1,:))
-HO_Sequence(SEQ::Sequence, GR_dfc::Array{Grad,1}, DUR)= HO_Sequence(SEQ, reshape(GR_dfc, :, 1), [DUR])
+HO_Sequence(GR_dfc::AbstractVector{<:Grad}) = HO_Sequence(reshape(GR_dfc,1,:))
+HO_Sequence(SEQ::Sequence, GR_dfc::AbstractVector{<:Grad}, DUR::Real) = HO_Sequence(SEQ, reshape(GR_dfc, :, 1), [DUR])
 HO_Sequence() = HO_Sequence([Grad(0, 0)])
 
 
@@ -104,6 +105,14 @@ Base.lastindex(x::HO_Sequence) = length(x.DUR)
 
 #Sequence object functions
 size(x::HO_Sequence) = size(x.GR_dfc[1,:])
+
+# Event amplitudes may be edited after construction. Reconcile durations before sampling
+# without mutating the caller's native sequence or its Pulseq extensions.
+function simulation_sequence(hoseq::HO_Sequence)
+    seq = hoseq.SEQ
+    durations = max.(seq.DUR, hoseq.DUR, vec(dur(hoseq.GR_dfc)))
+    return Sequence(seq.GR, seq.RF, seq.ADC, durations, seq.EXT, seq.DEF)
+end
 
 """
     str = show(io::IO, s::HO_Sequence)
@@ -147,111 +156,55 @@ end
     `h7`, `h8`, `gx`, `gy`, `gz`, `rf`, and `adc` events. Each event, represented by 
 	`e::NamedTuple`, includes time samples (`e.t`) and amplitude samples (`e.A`)
 """
-get_samples(hoseq::HO_Sequence; off_val=0, max_rf_samples=Inf) = begin
-	gx, gy, gz, rf, adc = get_samples(hoseq.SEQ; off_val=Inf, max_rf_samples)
-    N = length(hoseq.SEQ)
-    T0 = get_block_start_times(hoseq.SEQ)
-    # GRADs
-    t_h0  = reduce(vcat, [get_theo_t(hoseq.GR_dfc[ 1,i]) .+ T0[i] for i in 1:N])
-	t_h1  = reduce(vcat, [get_theo_t(hoseq.GR_dfc[ 2,i]) .+ T0[i] for i in 1:N])
-	t_h2  = reduce(vcat, [get_theo_t(hoseq.GR_dfc[ 3,i]) .+ T0[i] for i in 1:N])
-	t_h3  = reduce(vcat, [get_theo_t(hoseq.GR_dfc[ 4,i]) .+ T0[i] for i in 1:N])
-	t_h4  = reduce(vcat, [get_theo_t(hoseq.GR_dfc[ 5,i]) .+ T0[i] for i in 1:N])
-	t_h5  = reduce(vcat, [get_theo_t(hoseq.GR_dfc[ 6,i]) .+ T0[i] for i in 1:N])
-	t_h6  = reduce(vcat, [get_theo_t(hoseq.GR_dfc[ 7,i]) .+ T0[i] for i in 1:N])
-	t_h7  = reduce(vcat, [get_theo_t(hoseq.GR_dfc[ 8,i]) .+ T0[i] for i in 1:N])
-	t_h8  = reduce(vcat, [get_theo_t(hoseq.GR_dfc[ 9,i]) .+ T0[i] for i in 1:N])
-	t_h9  = reduce(vcat, [get_theo_t(hoseq.GR_dfc[10,i]) .+ T0[i] for i in 1:N])
-	t_h10 = reduce(vcat, [get_theo_t(hoseq.GR_dfc[11,i]) .+ T0[i] for i in 1:N])
-	t_h11 = reduce(vcat, [get_theo_t(hoseq.GR_dfc[12,i]) .+ T0[i] for i in 1:N])
-	t_h12 = reduce(vcat, [get_theo_t(hoseq.GR_dfc[13,i]) .+ T0[i] for i in 1:N])
-	t_h13 = reduce(vcat, [get_theo_t(hoseq.GR_dfc[14,i]) .+ T0[i] for i in 1:N])
-	t_h14 = reduce(vcat, [get_theo_t(hoseq.GR_dfc[15,i]) .+ T0[i] for i in 1:N])
-	t_h15 = reduce(vcat, [get_theo_t(hoseq.GR_dfc[16,i]) .+ T0[i] for i in 1:N])
-    A_h0  = reduce(vcat, [get_theo_A(hoseq.GR_dfc[ 1,i]; off_val) for i in 1:N])
-	A_h1  = reduce(vcat, [get_theo_A(hoseq.GR_dfc[ 2,i]; off_val) for i in 1:N])
-	A_h2  = reduce(vcat, [get_theo_A(hoseq.GR_dfc[ 3,i]; off_val) for i in 1:N])
-	A_h3  = reduce(vcat, [get_theo_A(hoseq.GR_dfc[ 4,i]; off_val) for i in 1:N])
-	A_h4  = reduce(vcat, [get_theo_A(hoseq.GR_dfc[ 5,i]; off_val) for i in 1:N])
-	A_h5  = reduce(vcat, [get_theo_A(hoseq.GR_dfc[ 6,i]; off_val) for i in 1:N])
-	A_h6  = reduce(vcat, [get_theo_A(hoseq.GR_dfc[ 7,i]; off_val) for i in 1:N])
-	A_h7  = reduce(vcat, [get_theo_A(hoseq.GR_dfc[ 8,i]; off_val) for i in 1:N])
-	A_h8  = reduce(vcat, [get_theo_A(hoseq.GR_dfc[ 9,i]; off_val) for i in 1:N])
-	A_h9  = reduce(vcat, [get_theo_A(hoseq.GR_dfc[10,i]; off_val) for i in 1:N])
-	A_h10 = reduce(vcat, [get_theo_A(hoseq.GR_dfc[11,i]; off_val) for i in 1:N])
-	A_h11 = reduce(vcat, [get_theo_A(hoseq.GR_dfc[12,i]; off_val) for i in 1:N])
-	A_h12 = reduce(vcat, [get_theo_A(hoseq.GR_dfc[13,i]; off_val) for i in 1:N])
-	A_h13 = reduce(vcat, [get_theo_A(hoseq.GR_dfc[14,i]; off_val) for i in 1:N])
-	A_h14 = reduce(vcat, [get_theo_A(hoseq.GR_dfc[15,i]; off_val) for i in 1:N])
-	A_h15 = reduce(vcat, [get_theo_A(hoseq.GR_dfc[16,i]; off_val) for i in 1:N])
-
-    return (
-        gx, gy, gz, rf, adc,
-		h0  = (t = t_h0 , A = A_h0 ),
-		h1  = (t = t_h1 , A = A_h1 ),
-		h2  = (t = t_h2 , A = A_h2 ),
-		h3  = (t = t_h3 , A = A_h3 ),
-		h4  = (t = t_h4 , A = A_h4 ),
-		h5  = (t = t_h5 , A = A_h5 ),
-		h6  = (t = t_h6 , A = A_h6 ),
-		h7  = (t = t_h7 , A = A_h7 ),
-		h8  = (t = t_h8 , A = A_h8 ),
-		h9  = (t = t_h9 , A = A_h9 ),
-		h10 = (t = t_h10, A = A_h10),
-		h11 = (t = t_h11, A = A_h11),
-		h12 = (t = t_h12, A = A_h12),
-		h13 = (t = t_h13, A = A_h13),
-		h14 = (t = t_h14, A = A_h14),
-		h15 = (t = t_h15, A = A_h15)
-    )
+function get_samples(hoseq::HO_Sequence; off_val=0, max_rf_samples=Inf)
+    samples = get_samples(simulation_sequence(hoseq))
+    rf = samples.rf
+    if max_rf_samples != Inf
+        max_rf_samples isa Integer && max_rf_samples > 0 ||
+            throw(ArgumentError("max_rf_samples must be a positive integer or Inf."))
+        if length(rf.t) > max_rf_samples
+            indices = unique(round.(Int, range(1, length(rf.t); length=max_rf_samples)))
+            rf = (; t=rf.t[indices], A=rf.A[indices])
+        end
+    end
+    fields = ntuple(16) do term
+        t, A = get_theo_Gi(hoseq, term)
+        if !iszero(off_val)
+            A = copy(A)
+            A[iszero.(A)] .= off_val
+        end
+        (; t, A)
+    end
+    names = ntuple(i -> Symbol("h", i - 1), 16)
+    nominal = (; gx=samples.gx, gy=samples.gy, gz=samples.gz,
+                rf, adc=samples.adc)
+    return merge(nominal, NamedTuple{names}(fields))
 end
 
-function get_theo_Gi(hoseq::HO_Sequence, idx)
-    N = length(hoseq.SEQ)
-    T0 = get_block_start_times(hoseq.SEQ)
-    t = vcat([get_theo_t(hoseq.GR_dfc[idx,i]) .+ T0[i] for i=1:N]...)
-    G = vcat([get_theo_A(hoseq.GR_dfc[idx,i]) for i=1:N]...) #; off_val=0 <---potential solution
-	Interpolations.deduplicate_knots!(t; move_knots=true)
-	return (t, G)
+function get_theo_Gi(hoseq::HO_Sequence, term)
+    seq = simulation_sequence(hoseq)
+    starts = get_block_start_times(seq)
+    t, A = Float64[], Float64[]
+    for block in 1:length(seq)
+        grad = hoseq.GR_dfc[term, block]
+        append!(t, times(grad) .+ starts[block])
+        append!(A, ampls(grad))
+    end
+    return t, A
 end
-
 
 function get_grads(hoseq::HO_Sequence, t::Vector)
-    h0  = get_theo_Gi(hoseq, 1 )
-    h1  = get_theo_Gi(hoseq, 2 )
-    h2  = get_theo_Gi(hoseq, 3 )
-    h3  = get_theo_Gi(hoseq, 4 )
-    h4  = get_theo_Gi(hoseq, 5 )
-    h5  = get_theo_Gi(hoseq, 6 )
-    h6  = get_theo_Gi(hoseq, 7 )
-    h7  = get_theo_Gi(hoseq, 8 )
-    h8  = get_theo_Gi(hoseq, 9 )
-	h9  = get_theo_Gi(hoseq, 10)
-	h10 = get_theo_Gi(hoseq, 11)
-	h11 = get_theo_Gi(hoseq, 12)
-	h12 = get_theo_Gi(hoseq, 13)
-	h13 = get_theo_Gi(hoseq, 14)
-	h14 = get_theo_Gi(hoseq, 15)
-	h15 = get_theo_Gi(hoseq, 16)
-    H0  = linear_interpolation(h0..., extrapolation_bc=0)(t)
-    H1  = linear_interpolation(h1..., extrapolation_bc=0)(t)
-    H2  = linear_interpolation(h2..., extrapolation_bc=0)(t)
-    H3  = linear_interpolation(h3..., extrapolation_bc=0)(t)
-    H4  = linear_interpolation(h4..., extrapolation_bc=0)(t)
-    H5  = linear_interpolation(h5..., extrapolation_bc=0)(t)
-    H6  = linear_interpolation(h6..., extrapolation_bc=0)(t)
-    H7  = linear_interpolation(h7..., extrapolation_bc=0)(t)
-    H8  = linear_interpolation(h8..., extrapolation_bc=0)(t)
-	H9  = linear_interpolation(h9..., extrapolation_bc=0)(t)
-	H10 = linear_interpolation(h10..., extrapolation_bc=0)(t)
-	H11 = linear_interpolation(h11..., extrapolation_bc=0)(t)
-	H12 = linear_interpolation(h12..., extrapolation_bc=0)(t)
-	H13 = linear_interpolation(h13..., extrapolation_bc=0)(t)
-	H14 = linear_interpolation(h14..., extrapolation_bc=0)(t)
-	H15 = linear_interpolation(h15..., extrapolation_bc=0)(t)
-    return (H0, H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15)
+    order = sortperm(t)
+    return ntuple(16) do term
+        knots, amplitudes = get_theo_Gi(hoseq, term)
+        samples = KomaMRIBase.linear_interpolate_samples(
+            (; t=knots, A=amplitudes), t[order]; default=0.0,
+        )
+        values = similar(samples)
+        values[order] .= samples
+        values
+    end
 end
-
 
 """
     K_nominal, K_nominal_adc, K_dfc, K_dfc_adc = get_kspace(hoseq::HO_Sequence; Δt=1)
@@ -267,114 +220,58 @@ end
 # Returns
 - `K_nominal`: (`3-column ::Matrix{Float64}`) nominal kspace
 - `K_nominal_adc`: (`3-column ::Matrix{Float64}`) nominal adc kspace
-- `K_dfc`: (`3-column ::Matrix{Float64}`) DFC kspace
-- `K_dfc_adc`: (`3-column ::Matrix{Float64}`) DFC adc kspace
+- `K_dfc`: (`16-column ::Matrix{Float64}`) generalized DFC encoding coefficients
+- `K_dfc_adc`: (`16-column ::Matrix{Float64}`) ADC-sampled DFC encoding coefficients
 """
-get_kspace(hoseq::HO_Sequence; Δt=1,
-skip_rf=zeros(Bool, sum(is_RF_on.(hoseq.SEQ)))) = begin
-	t, Δt = get_variable_times(hoseq.SEQ; Δt)
-	
-	Gx, Gy, Gz = get_grads(hoseq.SEQ, t)
-	H0, H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11, H12, H13, H14, H15 = get_grads(hoseq, t)
-	t = t[1:end-1]
-
-	G_nominal = Dict(1=>Gx, 2=>Gy, 3=>Gz)
-	G_dfc = Dict(1=>H0, 2=>H1, 3=>H2, 4=>H3, 5=>H4, 6=>H5, 7=>H6, 8=>H7, 9=>H8, 
-	              10=>H9, 11=>H10, 12=>H11, 13=>H12, 14=>H13, 15=>H14, 16=>H15)
-	
-	K_nominal, K_nominal_adc = grad2kspace(hoseq.SEQ, G_nominal, t, Δt, skip_rf)
-	K_dfc, K_dfc_adc = grad2kspace(hoseq, G_dfc, t, Δt, skip_rf)
-	return K_nominal, K_nominal_adc, K_dfc, K_dfc_adc
+function get_kspace(
+    hoseq::HO_Sequence; Δt=1,
+    skip_rf=falses(sum(is_RF_on.(hoseq.SEQ))),
+    sampling_rule=MaxStepSizeRule(Δt, 5e-5),
+)
+    hoseqd = discretize(hoseq; sampling_rule)
+    seqd = hoseqd.seqd
+    t = seqd.t[1:end-1]
+    nominal = (seqd.Gx, seqd.Gy, seqd.Gz)
+    measured = ntuple(i -> getfield(hoseqd, Symbol("h", i - 1)), 16)
+    seq = simulation_sequence(hoseq)
+    K_nominal, K_nominal_adc = grad2kspace(seq, nominal, t, seqd.Δt, skip_rf)
+    K_dfc, K_dfc_adc = grad2kspace(hoseq, measured, t, seqd.Δt, skip_rf)
+    return K_nominal, K_nominal_adc, K_dfc, K_dfc_adc
 end
 
-function grad2kspace(seq::Sequence, G, t, Δt, skip_rf)
-	#kspace
-	Nt = length(t)
-	k = zeros(Nt,3)
-	#get_RF_center_breaks
-	idx_rf, rf_type = KomaMRIBase.get_RF_types(seq, t)
-	parts = kfoldperm(Nt, 1; breaks=idx_rf)
-	for i = 1:3
-		kf = 0
-		for (rf, p) in enumerate(parts)
-			k[p,i] = cumtrapz(Δt[p]', G[i][p[1]:p[end]+1]')[:] #This is the exact integral
-			if rf > 1
-				if !skip_rf[rf-1]
-					if rf_type[rf-1] == 0 # Excitation
-						k[p,i] .-= 0
-					elseif rf_type[rf-1] == 1 # Refocuse
-						k[p,i] .-= kf
-					end
-				else
-					k[p,i] .+= kf
-				end
-			end
-			kf = k[p[end],i]
-		end
-	end
-	kspace = γ * k #[m^-1]
-	#Interp, as Gradients are generally piece-wise linear, the integral is piece-wise quadratic
-	#Nevertheless, the integral is sampled at the ADC times so a linear interp is sufficient
-	#TODO: check if this interpolation is necessary
-	ts = t .+ Δt
-	t_adc =  get_adc_sampling_times(seq)
-	kx_adc = linear_interpolation(ts,kspace[:,1],extrapolation_bc=0)(t_adc)
-	ky_adc = linear_interpolation(ts,kspace[:,2],extrapolation_bc=0)(t_adc)
-	kz_adc = linear_interpolation(ts,kspace[:,3],extrapolation_bc=0)(t_adc)
-	kspace_adc = [kx_adc ky_adc kz_adc]
-	#Final
-	kspace, kspace_adc	
-end 
+grad2kspace(hoseq::HO_Sequence, G, t, Δt, skip_rf) =
+    grad2kspace(simulation_sequence(hoseq), G, t, Δt, skip_rf)
 
-function grad2kspace(hoseq::HO_Sequence, G, t, Δt, skip_rf)
-	seq = hoseq.SEQ
-	#kspace
-	Nt = length(t)
-	k = zeros(Nt,16)
-	#get_RF_center_breaks
-	idx_rf, rf_type = KomaMRIBase.get_RF_types(seq, t)
-	parts = kfoldperm(Nt, 1; breaks=idx_rf)
-	for i = 1:16
-		kf = 0
-		for (rf, p) in enumerate(parts)
-			k[p,i] = cumtrapz(Δt[p]', G[i][p[1]:p[end]+1]')[:] #This is the exact integral
-			if rf > 1
-				if !skip_rf[rf-1]
-					if rf_type[rf-1] == 0 # Excitation
-						k[p,i] .-= 0
-					elseif rf_type[rf-1] == 1 # Refocuse
-						k[p,i] .-= kf
-					end
-				else
-					k[p,i] .+= kf
-				end
-			end
-			kf = k[p[end],i]
-		end
-	end
-	kspace = γ * k #[m^-1]
-	#Interp, as Gradients are generally piece-wise linear, the integral is piece-wise quadratic
-	#Nevertheless, the integral is sampled at the ADC times so a linear interp is sufficient
-	#TODO: check if this interpolation is necessary
-	ts = t .+ Δt
-	t_adc =  get_adc_sampling_times(seq)
-	k0_adc  = linear_interpolation(ts,kspace[:, 1],extrapolation_bc=0)(t_adc)
-	k1_adc  = linear_interpolation(ts,kspace[:, 2],extrapolation_bc=0)(t_adc)
-	k2_adc  = linear_interpolation(ts,kspace[:, 3],extrapolation_bc=0)(t_adc)
-	k3_adc  = linear_interpolation(ts,kspace[:, 4],extrapolation_bc=0)(t_adc)
-	k4_adc  = linear_interpolation(ts,kspace[:, 5],extrapolation_bc=0)(t_adc)
-	k5_adc  = linear_interpolation(ts,kspace[:, 6],extrapolation_bc=0)(t_adc)
-	k6_adc  = linear_interpolation(ts,kspace[:, 7],extrapolation_bc=0)(t_adc)
-	k7_adc  = linear_interpolation(ts,kspace[:, 8],extrapolation_bc=0)(t_adc)
-	k8_adc  = linear_interpolation(ts,kspace[:, 9],extrapolation_bc=0)(t_adc)
-	k9_adc  = linear_interpolation(ts,kspace[:,10],extrapolation_bc=0)(t_adc)
-	k10_adc = linear_interpolation(ts,kspace[:,11],extrapolation_bc=0)(t_adc)
-	k11_adc = linear_interpolation(ts,kspace[:,12],extrapolation_bc=0)(t_adc)
-	k12_adc = linear_interpolation(ts,kspace[:,13],extrapolation_bc=0)(t_adc)
-	k13_adc = linear_interpolation(ts,kspace[:,14],extrapolation_bc=0)(t_adc)
-	k14_adc = linear_interpolation(ts,kspace[:,15],extrapolation_bc=0)(t_adc)
-	k15_adc = linear_interpolation(ts,kspace[:,16],extrapolation_bc=0)(t_adc)
-	#Final
-	kspace_adc = [k0_adc k1_adc k2_adc k3_adc k4_adc k5_adc k6_adc k7_adc k8_adc k9_adc k10_adc k11_adc k12_adc k13_adc k14_adc k15_adc]
-	kspace, kspace_adc	
-end 
+function grad2kspace(seq::Sequence, G, t, Δt, skip_rf)
+    isempty(t) && throw(ArgumentError("Cannot integrate an empty sequence."))
+    idx_rf, rf_types = KomaMRIBase.get_RF_types(seq, t)
+    length(skip_rf) == length(rf_types) ||
+        throw(DimensionMismatch("skip_rf must contain one flag per RF event."))
+    parts = kfoldperm(length(t), 1; breaks=idx_rf)
+    k = zeros(length(t), length(G))
+    for term in 1:length(G)
+        previous = 0.0
+        for (rf, part) in enumerate(parts)
+            k[part, term] .= cumtrapz(
+                Δt[part], G[term][first(part):last(part)+1],
+            )
+            if rf > 1
+                rf_type = rf_types[rf-1]
+                sign = skip_rf[rf-1] ? 1 :
+                    rf_type isa Excitation ? 0 : rf_type isa Refocusing ? -1 : 1
+                k[part, term] .+= sign * previous
+            end
+            previous = k[last(part), term]
+        end
+    end
+    kspace = γ .* k
+    sample_times = t .+ Δt
+    adc_times = get_adc_sampling_times(seq)
+    kspace_adc = zeros(length(adc_times), length(G))
+    for term in 1:length(G)
+        kspace_adc[:, term] .= KomaMRIBase.linear_interpolate_samples(
+            (; t=sample_times, A=view(kspace, :, term)), adc_times; default=0.0,
+        )
+    end
+    return kspace, kspace_adc
+end

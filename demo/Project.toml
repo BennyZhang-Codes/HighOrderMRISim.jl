@@ -1,0 +1,26 @@
+[deps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+HighOrderMRI = "065cb43a-79ab-4c63-92af-604ac7366864"
+HighOrderMRISim = "6437142c-3aa9-4303-9277-bb0012cca490"
+KomaMRI = "6a340f8b-2cdf-4c04-99be-4953d9b66d0a"
+KomaMRICore = "4baa4f4d-2ae9-40db-8331-a7d1080e3f4e"
+MAT = "23992714-dd62-5051-b70f-ba57cb901cac"
+MRIGeometry = "8276fe9c-2863-4be0-a306-77caa5a26818"
+NFFT = "efe261a4-0d2b-5849-be55-fc731d526b0d"
+NonuniformFFTs = "cd96f58b-6017-4a02-bb9e-f4d81626177f"
+RegularizedLeastSquares = "1e9c538a-f78c-5de5-8ffb-0b6dbe892d23"
+
+[sources]
+HighOrderMRI = {url = "https://github.com/BennyZhang-Codes/HighOrderMRI.jl.git", rev = "245e4305ae1c8f7dfffef4f26ab1cb200d783ab0"}
+HighOrderMRISim = {url = "https://github.com/BennyZhang-Codes/HighOrderMRISim.jl.git", rev = "087f1b8eb7500e7c8019a11c28cb1eed49a44824"}
+MRIGeometry = {url = "https://github.com/BennyZhang-Codes/HighOrderMRI.jl.git", rev = "245e4305ae1c8f7dfffef4f26ab1cb200d783ab0", subdir = "MRIGeometry"}
+
+[compat]
+CUDA = "=6.4.2"
+KomaMRI = "=0.15.0"
+KomaMRICore = "=0.14.0"
+MAT = "=0.12.1"
+NFFT = "=0.14.3"
+NonuniformFFTs = "=0.9.6"
+RegularizedLeastSquares = "=0.16.12"
+julia = "~1.12.0"

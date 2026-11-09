@@ -99,7 +99,7 @@ end
 
 function plt_seqd(
     hoseq ::HO_Sequence                                       ;
-    sampling_params    = KomaMRIBase.default_sampling_params(),
+    sampling_params    = Dict{String,Any}(),
     xlabel             = "Time [ms]"                          ,
     ylabel             = "Amplitude"                          ,
     width              = 20                                   ,      
