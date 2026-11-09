@@ -1,0 +1,49 @@
+cff-version: 1.2.0
+type: software
+title: HighOrderMRISim.jl
+message: >-
+  If you use this software, please cite the original method paper below.
+  See README.md and CITATION.bib for the related workshop abstract and follow-up work.
+authors:
+  - family-names: Zhang
+    given-names: Jinyuan
+version: "0.2.0"
+date-released: "2026-11-09"
+repository-code: "https://github.com/BennyZhang-Codes/HighOrderMRISim.jl"
+preferred-citation:
+  type: article
+  title: Data stitching for dynamic field monitoring with NMR probes
+  authors:
+    - family-names: Zhang
+      given-names: Jinyuan
+    - family-names: Zhang
+      given-names: Zihao
+    - family-names: Zuo
+      given-names: Zhentao
+    - family-names: Xue
+      given-names: Rong
+    - family-names: Zhuo
+      given-names: Yan
+    - family-names: Cushing
+      given-names: Cameron
+    - family-names: Bratch
+      given-names: Alexander
+    - family-names: Auerbach
+      given-names: Edward
+    - family-names: Grant
+      given-names: Andrea
+    - family-names: An
+      given-names: Jing
+    - family-names: Ugurbil
+      given-names: Kamil
+    - family-names: Wu
+      given-names: Xiaoping
+  journal: Magnetic Resonance in Medicine
+  year: 2026
+  month: 4
+  volume: "95"
+  issue: "4"
+  start: "1944"
+  end: "1958"
+  doi: "10.1002/mrm.70164"
+  url: "https://doi.org/10.1002/mrm.70164"
