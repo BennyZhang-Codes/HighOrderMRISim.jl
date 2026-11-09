@@ -3,23 +3,28 @@ name: Documentation
 on:
   push:
     branches: [main, dev]
+    tags: ['v*']
   pull_request:
     branches: [main, dev]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag to publish without changing the tag
+        type: string
+        default: ''
 
 permissions:
   contents: read
-
-# New main builds replace older ones; PRs and dev use separate groups.
-concurrency:
-  group: documentation-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   build:
     name: Julia 1.12 documentation build
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
+      version: ${{ steps.selection.outputs.version }}
+      publish: ${{ steps.selection.outputs.publish }}
     env:
       CUDA_VISIBLE_DEVICES: ''
       JULIA_CI: 'true'
@@ -34,12 +39,64 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - uses: julia-actions/setup-julia@v3
         id: julia
         with:
           version: '1.12'
+
+      - name: Select and validate the documentation source
+        id: selection
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          docs_source="$GITHUB_WORKSPACE"
+          docs_version=dev
+          publish=false
+          if [[ -n "$RELEASE_TAG" ]]; then
+            if [[ "$GITHUB_EVENT_NAME" != workflow_dispatch ||
+                  ( "$GITHUB_REF" != refs/heads/main && "$GITHUB_REF" != refs/heads/dev ) ]]; then
+              echo 'Manual release publication must run from main or dev.' >&2
+              exit 1
+            fi
+            docs_source="$GITHUB_WORKSPACE/release-source"
+            docs_version="$RELEASE_TAG"
+            publish=true
+          elif [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/tags/* ]]; then
+            docs_version="${GITHUB_REF#refs/tags/}"
+            publish=true
+          elif [[ "$GITHUB_REF" == refs/heads/dev &&
+                  ( "$GITHUB_EVENT_NAME" == push || "$GITHUB_EVENT_NAME" == workflow_dispatch ) ]]; then
+            publish=true
+          fi
+          if [[ "$docs_version" != dev ]]; then
+            numeric='(0|[1-9][0-9]*)'
+            prerelease='(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)'
+            metadata='[0-9A-Za-z-]+'
+            version_pattern="^v${numeric}\\.${numeric}\\.${numeric}(-${prerelease}(\\.${prerelease})*)?(\\+${metadata}(\\.${metadata})*)?$"
+            if [[ ! "$docs_version" =~ $version_pattern ]]; then
+              echo 'Release tags must be semantic versions such as v0.2.0.' >&2
+              exit 1
+            fi
+            git rev-parse --verify "refs/tags/$docs_version^{commit}" >/dev/null
+          fi
+          printf 'DOCS_SOURCE=%s\nDOCS_VERSION=%s\n' "$docs_source" "$docs_version" >> "$GITHUB_ENV"
+          printf 'source=%s\nversion=%s\npublish=%s\n' "$docs_source" "$docs_version" "$publish" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the existing release tag
+        if: inputs.release_tag != ''
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag }}
+          path: release-source
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Record the source commit
+        id: source
+        run: printf 'sha=%s\n' "$(git -C "$DOCS_SOURCE" rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@v7
         id: python
@@ -65,33 +122,151 @@ jobs:
             ${{ steps.depot.outputs.path }}/compiled
             ${{ steps.depot.outputs.path }}/packages
             ${{ steps.depot.outputs.path }}/registries
-          key: docs-julia-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.julia.outputs.julia-version }}-py${{ steps.python.outputs.python-version }}-${{ hashFiles('Project.toml', 'docs/Project.toml') }}
+          key: docs-julia-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.julia.outputs.julia-version }}-py${{ steps.python.outputs.python-version }}-${{ hashFiles('Project.toml', 'docs/Project.toml', 'release-source/Project.toml', 'release-source/docs/Project.toml') }}
 
       - name: Instantiate the documentation environment
-        run: julia --startup-file=no --project=docs -e 'using Pkg; Pkg.instantiate()'
+        run: julia --startup-file=no --project="$DOCS_SOURCE/docs" -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Test documentation publication rules
+        run: julia --startup-file=no --project="$DOCS_SOURCE/docs" docs/publish/runtests.jl
 
       - name: Build the documentation
-        run: julia --startup-file=no --project=docs docs/make.jl
+        run: julia --startup-file=no --project="$DOCS_SOURCE/docs" docs/make.jl "$DOCS_SOURCE/docs" "$DOCS_VERSION"
 
-      - name: Upload the documentation artifact
-        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+      - name: Upload the documentation build
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          path: docs/build/
+          name: documentation-build
+          path: ${{ steps.selection.outputs.source }}/docs/build/
+          if-no-files-found: error
+          include-hidden-files: true
 
-  deploy:
-    name: Deploy documentation to GitHub Pages
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+  publish:
+    name: Publish versioned documentation
+    if: >-
+      needs.build.outputs.publish == 'true' &&
+      ((github.event_name == 'push' &&
+        (github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/tags/v'))) ||
+       (github.event_name == 'workflow_dispatch' &&
+        (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')))
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
+    # Serialize archive updates and Pages deployment, not just the Git push.
+    concurrency:
+      group: documentation-publish
+      cancel-in-progress: false
     permissions:
+      contents: write
       pages: write
       id-token: write
+      statuses: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      JULIA_LOAD_PATH: '@:@stdlib'
+      JULIA_CPU_TARGET: generic
+      JULIA_NUM_THREADS: '2'
+      JULIA_NUM_PRECOMPILE_TASKS: '2'
+      DOCS_VERSION: ${{ needs.build.outputs.version }}
+      DOCS_SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
 
     steps:
-      - name: Deploy the documentation artifact
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check out the documented source commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.build.outputs.source_sha }}
+          path: publish-source
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download the documentation build
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: documentation-build
+          path: publish-source/docs/build
+
+      - uses: julia-actions/setup-julia@v3
+        id: julia
+        with:
+          version: '1.12'
+
+      - name: Configure an isolated publisher depot
+        id: depot
+        run: |
+          docs_depot="$RUNNER_TEMP/highordermrisim-docs-publish-depot"
+          printf 'JULIA_DEPOT_PATH=%s:\n' "$docs_depot" >> "$GITHUB_ENV"
+          printf 'path=%s\n' "$docs_depot" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the Documenter publisher environment
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ steps.depot.outputs.path }}/artifacts
+            ${{ steps.depot.outputs.path }}/compiled
+            ${{ steps.depot.outputs.path }}/packages
+            ${{ steps.depot.outputs.path }}/registries
+          key: docs-publish-julia-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.julia.outputs.julia-version }}-${{ hashFiles('docs/publish/Project.toml') }}
+
+      - name: Instantiate the publisher environment
+        run: julia --startup-file=no --project=docs/publish -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Skip superseded development builds
+        id: current
+        run: |
+          current=true
+          if [[ "$DOCS_VERSION" == dev ]]; then
+            remote_sha="$(git ls-remote --exit-code origin refs/heads/dev | cut -f1)"
+            if [[ "$remote_sha" != "$DOCS_SOURCE_SHA" ]]; then
+              echo 'A newer dev commit exists; this build will not be published.'
+              current=false
+            fi
+          fi
+          printf 'publish=%s\n' "$current" >> "$GITHUB_OUTPUT"
+
+      - name: Update the versioned documentation archive
+        if: steps.current.outputs.publish == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: julia --startup-file=no --project=docs/publish docs/publish.jl "$GITHUB_WORKSPACE/publish-source/docs" "$GITHUB_WORKSPACE/publish-source/docs/build" "$DOCS_VERSION" "$DOCS_SOURCE_SHA"
+
+      - name: Check out the documentation archive
+        if: steps.current.outputs.publish == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+          path: documentation-archive
+          persist-credentials: false
+
+      - name: Prepare the complete Pages site
+        if: steps.current.outputs.publish == 'true'
+        id: site
+        run: |
+          archive_tree="$(mktemp -d "$RUNNER_TEMP/highordermrisim-docs-archive.XXXXXX")"
+          site_dir="$(mktemp -d "$RUNNER_TEMP/highordermrisim-pages.XXXXXX")"
+          git -C documentation-archive archive HEAD | tar -x -C "$archive_tree"
+          while IFS= read -r -d '' link; do
+            case "$(realpath "$link")" in
+              "$archive_tree"/*) ;;
+              *) echo 'A documentation alias points outside the archive.' >&2; exit 1 ;;
+            esac
+          done < <(find "$archive_tree" -type l -print0)
+          cp -RL "$archive_tree/." "$site_dir/"
+          printf 'path=%s\n' "$site_dir" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the complete Pages site
+        if: steps.current.outputs.publish == 'true'
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+        with:
+          path: ${{ steps.site.outputs.path }}
+
+      - name: Deploy the versioned documentation
+        if: steps.current.outputs.publish == 'true'
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

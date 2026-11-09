@@ -1,8 +1,19 @@
 using Documenter
 using HighOrderMRISim
+using TOML
+
+include("versioning.jl")
+
+length(ARGS) <= 2 || error("Usage: make.jl [DOCS_ROOT [VERSION]]")
+docs_root = isempty(ARGS) ? (@__DIR__) : abspath(ARGS[1])
+docs_ref = length(ARGS) < 2 ? "dev" : ARGS[2]
+docs_version = documentation_version(docs_ref)
+realpath(pkgdir(HighOrderMRISim)) == realpath(dirname(docs_root)) ||
+    error("The loaded package does not match the documentation source checkout")
+source_sha = readchomp(`git -C $docs_root rev-parse HEAD`)
 
 makedocs(
-    root = @__DIR__,
+    root = docs_root,
     sitename = "HighOrderMRISim.jl",
     modules = [HighOrderMRISim],
     repo = Documenter.Remotes.GitHub("BennyZhang-Codes", "HighOrderMRISim.jl"),
@@ -10,8 +21,9 @@ makedocs(
     checkdocs = :none,
     format = Documenter.HTML(
         prettyurls = false,
-        canonical = "https://bennyzhang-codes.github.io/HighOrderMRISim.jl/",
-        edit_link = "dev",
+        canonical = "https://bennyzhang-codes.github.io/HighOrderMRISim.jl/$(docs_version)/",
+        edit_link = docs_ref == "dev" ? "dev" : nothing,
+        inventory_version = docs_version == "dev" ? "dev" : docs_version[2:end],
         repolink = "https://github.com/BennyZhang-Codes/HighOrderMRISim.jl",
     ),
     pages = [
@@ -25,3 +37,7 @@ makedocs(
         "API Reference" => "api.md",
     ],
 )
+
+open(joinpath(docs_root, "build", "build-info.toml"), "w") do io
+    TOML.print(io, Dict("ref" => docs_ref, "source_sha" => source_sha))
+end

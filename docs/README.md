@@ -1,4 +1,18 @@
-# Build the documentation locally
+# Documentation
+
+The [documentation site](https://bennyzhang-codes.github.io/HighOrderMRISim.jl/)
+provides a version selector:
+
+| Version | Source |
+| --- | --- |
+| [stable](https://bennyzhang-codes.github.io/HighOrderMRISim.jl/stable/) | Highest non-prerelease version with published documentation |
+| [dev](https://bennyzhang-codes.github.io/HighOrderMRISim.jl/dev/) | Committed `dev` branch |
+| [v0.2.0](https://bennyzhang-codes.github.io/HighOrderMRISim.jl/v0.2.0/) | Archived manual built from the `v0.2.0` tag |
+
+Release manuals use their tagged package and Markdown sources. Later changes
+to the development manual do not change those release sources.
+
+## Build locally
 
 Use Julia 1.12. From the repository root, set up Python and Matplotlib as
 described in [Getting Started](src/getting-started.md#install-from-a-checkout).
@@ -26,15 +40,20 @@ local documentation manifest are ignored by Git. The build does not deploy.
 
 The [documentation workflow](../.github/workflows/documentation.yml) builds
 the manual on pushes and pull requests to `main` and `dev`. Pull requests and
-`dev` only run build checks. A separate deployment job publishes `docs/build/`
-from a successful `main` push or a manual run on `main`.
+`main` pushes only run build checks. Pushes to `dev` update the development
+manual; version tags (`v*`) publish versioned manuals. Only non-prerelease
+versions can become `stable`.
 
-Before the first deployment, enable GitHub Pages with **GitHub Actions** as
-the source and restrict the `github-pages` environment to `main`. These
-repository settings must be configured separately; the workflow does not
-enable Pages. No deploy key or `gh-pages` branch is needed.
+To publish an existing release, run the workflow manually from `main` or `dev`
+and set `release_tag`, for example `v0.2.0`. The workflow checks out that tag's
+package and manual, using the current publishing configuration without moving
+or changing the tag.
 
-The intended site is
-[HighOrderMRISim.jl documentation](https://bennyzhang-codes.github.io/HighOrderMRISim.jl/).
-It serves the current `main` manual, not a versioned release archive. Keep
-the README badge on the local build until the first deployment is verified.
+Documenter maintains the generated version archive on `gh-pages`. The workflow
+then deploys the complete site as a GitHub Pages artifact. Keep Pages configured
+with **GitHub Actions** as the source and allow the `github-pages` environment
+to deploy from `dev`, `main`, and version tags. Pull requests never publish.
+Publishing uses `GITHUB_TOKEN`; no SSH deploy key is needed.
+
+The README badge reports the `dev` documentation workflow status. The separate
+stable and development links open the published manuals.
