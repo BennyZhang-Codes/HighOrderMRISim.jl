@@ -5,10 +5,15 @@ makedocs(
     root = @__DIR__,
     sitename = "HighOrderMRISim.jl",
     modules = [HighOrderMRISim],
-    remotes = nothing,
+    repo = Documenter.Remotes.GitHub("BennyZhang-Codes", "HighOrderMRISim.jl"),
     # The API page covers the simulation interface, not every legacy utility.
     checkdocs = :none,
-    format = Documenter.HTML(prettyurls = false, edit_link = nothing, repolink = nothing),
+    format = Documenter.HTML(
+        prettyurls = false,
+        canonical = "https://bennyzhang-codes.github.io/HighOrderMRISim.jl/",
+        edit_link = "dev",
+        repolink = "https://github.com/BennyZhang-Codes/HighOrderMRISim.jl",
+    ),
     pages = [
         "Home" => "index.md",
         "Getting Started" => "getting-started.md",
