@@ -36,10 +36,10 @@ demos. The legacy simulation baseline remains available as `v0.1.0`.
 
 ## Validation
 
-- [Julia 1.12.7 CPU CI](https://github.com/BennyZhang-Codes/HighOrderMRISim.jl/actions/runs/42487659540)
-  passed both `Pkg.instantiate()` and `Pkg.test()` (298/298 assertions) on the
-  `v0.2.0` version commit. CUDA and multi-GPU package tests are run separately
-  on NVIDIA hardware.
+- [Julia 1.12.7 CPU CI](https://github.com/BennyZhang-Codes/HighOrderMRISim.jl/actions/runs/42557443240)
+  passed both `Pkg.instantiate()` and `Pkg.test()` (298/298 assertions) on `dev`
+  at `d3b315f`, with and without a warm cache. CUDA and multi-GPU package tests
+  run separately on NVIDIA hardware.
 - The isolated demo acceptance run passed 96/96 checks for the 2D and 3D default
   physical workflows and their pure spin-density controls. For the pure-density
   controls, magnitude NRMSE / SSIM were 1.27% / 0.99188 (2D) and

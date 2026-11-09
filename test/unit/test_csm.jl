@@ -83,4 +83,3 @@ import HighOrderMRISim: load_csm, _resample_csm
         end
     end
 end
-
