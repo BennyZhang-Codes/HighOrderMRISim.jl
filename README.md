@@ -1,5 +1,10 @@
 # HighOrderMRISim.jl
 
+[![Julia 1.12](https://img.shields.io/badge/Julia-1.12-9558B2?logo=julia&logoColor=white)](https://julialang.org/downloads/)
+[![KomaMRI 0.15](https://img.shields.io/badge/KomaMRI-0.15-0B7285)](https://github.com/JuliaHealth/KomaMRI.jl)
+[![CPU CI](https://img.shields.io/badge/CPU_CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)](https://github.com/BennyZhang-Codes/HighOrderMRISim.jl/actions/workflows/cpu-ci.yml)
+[![License terms](https://img.shields.io/badge/License-See_terms-lightgrey)](LICENSE)
+
 HighOrderMRISim.jl is a Julia package for high-order MRI signal simulation
 built on [KomaMRI.jl](https://github.com/JuliaHealth/KomaMRI.jl).
 
@@ -80,8 +85,7 @@ julia --startup-file=no --project=demo demo3D/4_recon.jl
 Results are saved under `output/`. The 2D demo uses LowRank reconstruction; the
 3D demo uses kernel reconstruction.
 
-See [package tests](test/README.md) and the
-[v0.2.0 release notes draft](RELEASE_NOTES.md) for validation and upgrade details.
+See [package tests](test/README.md) for validation details.
 
 ## License
 
