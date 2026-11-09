@@ -2,7 +2,7 @@
 
 [![Julia 1.12](https://img.shields.io/badge/Julia-1.12-9558B2?logo=julia&logoColor=white)](https://julialang.org/downloads/)
 [![KomaMRI 0.15](https://img.shields.io/badge/KomaMRI-0.15-0B7285)](https://github.com/JuliaHealth/KomaMRI.jl)
-[![Documentation](https://img.shields.io/badge/Docs-local_build-007EC6)](docs/README.md)
+[![Documentation](https://github.com/BennyZhang-Codes/HighOrderMRISim.jl/actions/workflows/documentation.yml/badge.svg?branch=dev)](https://github.com/BennyZhang-Codes/HighOrderMRISim.jl/actions/workflows/documentation.yml?query=branch%3Adev)
 
 HighOrderMRISim.jl is a Julia package for MRI signal simulation with time-varying,
 higher-order magnetic fields. Built on
