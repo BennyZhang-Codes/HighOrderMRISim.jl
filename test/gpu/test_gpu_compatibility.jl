@@ -33,6 +33,31 @@ println("GPU regression device: ", CUDA.name(CUDA.device()), " / ", CUDA.uuid(CU
     end
 end
 
+@testset "Array coil combination with reversed coil columns" begin
+    for T in (Float32, Float64)
+        # Distinct complex weights detect coil reordering and conjugation errors.
+        csm = Complex{T}[complex(T(i)/16, T(j-i)/32) for i in 1:12, j in 1:4]
+        source = CuArray(csm)
+        coils = view(source, 3:10, 4:-1:1)
+        @test stride(coils, 1) == 1
+        @test stride(coils, 2) < 0
+        for nadc in (1, 3)
+            states = Complex{T}[complex(T(i+j)/16, T(2j-i)/32) for i in 1:8, j in 1:nadc]
+            device_states = CuArray(states)
+            buffer = CUDA.fill(Complex{T}(-2, 3), nadc+4, 4, 1)
+            signal = view(buffer, 3:nadc+2, :, 1)
+            HighOrderMRISim.combine_array_signal!(signal,
+                nadc == 1 ? vec(device_states) : device_states, coils)
+            expected = transpose(states) * csm[3:10, 4:-1:1]
+            tolerance = T == Float32 ? 3e-5 : 1e-11
+            @test Array(signal) ≈ expected atol=tolerance rtol=tolerance
+            @test all(==(Complex{T}(-2, 3)), Array(buffer)[[1, 2, nadc+3, nadc+4], :, :])
+            @test Array(source) == csm
+            @test Array(device_states) == states
+        end
+    end
+end
+
 @testset "CUDA high-order compatibility" begin
     for precision in ("f32", "f64"), orders in ("0000", "1000", "1111"),
         coil_combination in HighOrderMRISim.HIGH_ORDER_COIL_COMBINATIONS

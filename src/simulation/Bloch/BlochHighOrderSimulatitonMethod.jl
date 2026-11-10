@@ -25,9 +25,14 @@ function combine_array_signal!(sig, states::CUDA.CuVecOrMat{Complex{T}},
         fill!(sig, zero(Complex{T}))
         return nothing
     end
-    # Bypass generic GPU matmul for CSM row views. cuBLAS can use their
-    # leading dimension directly as long as each column is contiguous.
-    coils = csm isa CUDA.StridedCuMatrix && stride(csm, 1) == 1 ? csm : CUDA.CuArray(csm)
+    # Bypass generic GPU matmul for CSM row views. cuBLAS requires contiguous
+    # columns and a positive leading dimension large enough for every row.
+    coils = if csm isa CUDA.StridedCuMatrix && stride(csm, 1) == 1 &&
+        stride(csm, 2) >= max(1, size(csm, 1))
+        csm
+    else
+        CUDA.CuArray(csm)
+    end
     output = similar(states, size(sig))
     CUDA.CUBLAS.gemmEx!('T', 'N', one(Complex{T}), reshape(states, size(states, 1), :),
         coils, zero(Complex{T}), output)
