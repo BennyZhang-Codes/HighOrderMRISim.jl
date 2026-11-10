@@ -55,5 +55,5 @@ with **GitHub Actions** as the source and allow the `github-pages` environment
 to deploy from `dev`, `main`, and version tags. Pull requests never publish.
 Publishing uses `GITHUB_TOKEN`; no SSH deploy key is needed.
 
-The README badge reports the `dev` documentation workflow status. The separate
-stable and development links open the published manuals.
+The README documentation badges link to the development and stable manuals.
+Build and deployment status is available in the documentation workflow.
