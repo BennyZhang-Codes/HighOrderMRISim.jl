@@ -712,11 +712,11 @@ version = "0.1.0"
 
 [[deps.HighOrderMRISim]]
 deps = ["CUDA", "Functors", "ImageDistances", "ImageMorphology", "ImageQualityIndexes", "ImageTransformations", "Interpolations", "KernelAbstractions", "KomaMRI", "KomaMRIBase", "KomaMRICore", "KomaMRIFiles", "KomaMRIPlots", "LinearAlgebra", "MAT", "MRIBase", "Parameters", "Pkg", "ProgressMeter", "PyPlot", "Reexport", "Statistics", "ThreadsX"]
-git-tree-sha1 = "25613038a44f16f51ab9c8172df46fb42d6b0f05"
-repo-rev = "087f1b8eb7500e7c8019a11c28cb1eed49a44824"
+git-tree-sha1 = "0be7e45065fee8b2f4944979248a220cbf29d47b"
+repo-rev = "v0.2.1"
 repo-url = "https://github.com/BennyZhang-Codes/HighOrderMRISim.jl.git"
 uuid = "6437142c-3aa9-4303-9277-bb0012cca490"
-version = "0.8.0"
+version = "0.2.1"
 
 [[deps.HostCPUFeatures]]
 deps = ["BitTwiddlingConvenienceFunctions", "IfElse", "Libdl", "Preferences", "Static"]
