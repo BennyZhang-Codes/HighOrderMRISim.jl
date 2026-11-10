@@ -76,8 +76,11 @@ function check_public_rf_buffers(precision, rf_limit, scenario)
     reference = simulate(obj, hoseq, Scanner(); sim_params=params, verbose=false, callbacks=(capture,))
     cpu = simulate(obj, hoseq, Scanner(); verbose=false,
         sim_params=merge(params, Dict("gpu" => false, "implementation" => "array")))
+    array = simulate(obj, hoseq, Scanner(); verbose=false,
+        sim_params=merge(params, Dict("implementation" => "array")))
     tolerance = precision == "f32" ? 3e-5 : 1e-11
     @test reference ≈ cpu atol=tolerance rtol=tolerance
+    @test array ≈ cpu atol=tolerance rtol=tolerance
     @test size(reference) == (nrf_first+nrf_last+npre, 3, 1)
     expected_rf = rf_on ? min(max(nrf_first, nrf_last), rf_limit == Inf ? typemax(Int) : rf_limit) : 0
     @test reports["gemm"].rf == expected_rf

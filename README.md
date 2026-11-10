@@ -2,32 +2,41 @@
 
 [![Julia 1.12](https://img.shields.io/badge/Julia-1.12-9558B2?logo=julia&logoColor=white)](https://julialang.org/downloads/)
 [![KomaMRI 0.15](https://img.shields.io/badge/KomaMRI-0.15-0B7285)](https://github.com/JuliaHealth/KomaMRI.jl)
-[![Documentation](https://github.com/BennyZhang-Codes/HighOrderMRISim.jl/actions/workflows/documentation.yml/badge.svg?branch=dev)](https://github.com/BennyZhang-Codes/HighOrderMRISim.jl/actions/workflows/documentation.yml?query=branch%3Adev)
+[![Docs dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://bennyzhang-codes.github.io/HighOrderMRISim.jl/dev/)
+[![Docs stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://bennyzhang-codes.github.io/HighOrderMRISim.jl/stable/)
 
 HighOrderMRISim.jl is a Julia package for MRI signal simulation with time-varying,
 higher-order magnetic fields. Built on
 [KomaMRI.jl](https://github.com/JuliaHealth/KomaMRI.jl), it extends Bloch simulation
-with field terms through third-order spherical harmonics and multi-coil signal
-reception, allowing users to study the effects of field dynamics on MRI signals
-and images. The package supports CPU and CUDA-accelerated single- and multi-GPU
+with a high-order field model originally developed and used in
+[DataStitching](https://github.com/BennyZhang-Codes/DataStitching).
+The package supports CPU and CUDA-accelerated single- and multi-GPU
 execution, with 2D and 3D spiral demos linking simulation to reconstruction through
 [HighOrderMRI.jl](https://github.com/BennyZhang-Codes/HighOrderMRI.jl).
 
 ## Features
 
-- Time-varying magnetic fields through third spatial order.
-- CPU simulation and CUDA kernels for single- and multi-GPU execution.
-- CUDA-accelerated high-order reconstruction through the companion
-  [HighOrderMRI.jl](https://github.com/BennyZhang-Codes/HighOrderMRI.jl) package:
+- Time-varying fields through third-order spherical harmonics, with
+  selectable field orders during free precession.
+- KomaMRI sequence integration with measured or user-defined field waveforms.
+- Multi-coil signal reception with coil-sensitivity maps, T1/T2 relaxation,
+  and static B0 off-resonance.
+- CPU and CUDA-accelerated single- and multi-GPU simulation in Float32
+  and Float64.
+- CUDA-accelerated reconstruction through
+  [HighOrderMRI.jl](https://github.com/BennyZhang-Codes/HighOrderMRI.jl):
   `HighOrderKernelOp` for explicit encoding and
   `HighOrderLowRankOp` for low-rank/NFFT-based encoding.
-- End-to-end 2D and 3D spiral simulation and reconstruction demos.
+- End-to-end 2D and 3D spiral demos with matched simulation/reconstruction
+  grids and NRMSE/SSIM evaluation.
 
-## Citation
+## How to Cite
 
-The high-order simulation implementation originated in
-[DataStitching](https://github.com/BennyZhang-Codes/DataStitching).
-For the original method, please cite:
+If you use this package, please cite the original
+[DataStitching](https://github.com/BennyZhang-Codes/DataStitching) paper and the
+high-order MRI workshop abstract below.
+
+### Plain Text
 
 Zhang J, Zhang Z, Zuo Z, Xue R, Zhuo Y, Cushing C, Bratch A, Auerbach E,
 Grant A, An J, Ugurbil K, Wu X. Data stitching for dynamic field monitoring
@@ -49,13 +58,51 @@ probes: improving acquisition efficiency and accuracy. In: *Proceedings of the
 2026 ISMRM-ISMRT Annual Meeting and Exhibition*, Cape Town, South Africa.
 Program #605-02-004.
 
-BibTeX entries: [CITATION.bib](CITATION.bib).
+<details>
+<summary>BibTeX</summary>
 
-## Documentation
+```bibtex
+@article{Zhang2026DataStitching,
+  author = {Zhang, Jinyuan and Zhang, Zihao and Zuo, Zhentao and Xue, Rong and Zhuo, Yan and Cushing, Cameron and Bratch, Alexander and Auerbach, Edward and Grant, Andrea and An, Jing and Ugurbil, Kamil and Wu, Xiaoping},
+  title = {Data stitching for dynamic field monitoring with {NMR} probes},
+  journal = {Magnetic Resonance in Medicine},
+  year = {2026},
+  month = apr,
+  volume = {95},
+  number = {4},
+  pages = {1944--1958},
+  doi = {10.1002/mrm.70164},
+  url = {https://doi.org/10.1002/mrm.70164}
+}
 
-Read the [stable manual](https://bennyzhang-codes.github.io/HighOrderMRISim.jl/stable/)
-for the latest release or the [development manual](https://bennyzhang-codes.github.io/HighOrderMRISim.jl/dev/)
-for the `dev` branch. Use the version selector to browse archived releases.
+@inproceedings{Zhang2026HighOrderMRI,
+  author = {Zhang, Jinyuan and Jaffray, Alexander and Qu, Shuxian and Cushing, Cameron and Xue, Rong and Ugurbil, Kamil and Rauscher, Alexander and Zhang, Zihao and Wu, Xiaoping},
+  title = {High Impact Project: A comprehensive open-source framework for high-order {MRI}},
+  booktitle = {2026 {ISMRM} Workshop on Data Sampling and Image Reconstruction},
+  year = {2026},
+  month = jan,
+  address = {Sedona, AZ, United States of America},
+  organization = {ISMRM},
+  note = {Program Number: 302-01-055},
+  url = {https://echo.ismrm.org/abstracts/view/234b9199-c446-4181-ad46-684761459f67}
+}
+
+@inproceedings{Zhang2026GeneralizedDataStitching,
+  author = {Zhang, Jinyuan and Zhen, Tianxiang and Li, Sisi and Zuo, Zhentao and Cushing, Cameron and An, Jing and Xue, Rong and Zhuo, Yan and Ugurbil, Kamil and Wu, Xiaoping and Zhang, Zihao},
+  title = {Generalized data stitching for dynamic field monitoring with {NMR} probes: improving acquisition efficiency and accuracy},
+  booktitle = {2026 {ISMRM-ISMRT} Annual Meeting and Exhibition},
+  year = {2026},
+  month = may,
+  address = {Cape Town, South Africa},
+  organization = {ISMRM},
+  note = {Program Number: 605-02-004},
+  url = {https://echo.ismrm.org/abstracts/view/c6ce7146-215e-47e3-beed-12bd0bb2233b}
+}
+```
+
+</details>
+
+BibTeX file: [CITATION.bib](CITATION.bib).
 
 ## Installation
 

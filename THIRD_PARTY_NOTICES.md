@@ -25,7 +25,7 @@ match [MRFColormaps at `97df59a`](https://github.com/markgriswold/MRFColormaps/t
 
 ## DataStitching
 
-See the [project and paper attribution](README.md#citation). Its terms remain
+See the [project and paper attribution](README.md#how-to-cite). Its terms remain
 in the package [LICENSE](LICENSE); pending data sources and permissions are
 listed in [Data sources](DATA_SOURCES.md).
 

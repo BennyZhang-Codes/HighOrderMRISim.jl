@@ -14,6 +14,32 @@ function initialize_spins_state(obj::HO_Phantom{T}, sim_method::Union{Bloch,Bloc
     return Xt, obj
 end
 
+function combine_array_signal!(sig, states, csm)
+    sig .= transpose(states) * csm
+    return nothing
+end
+
+function combine_array_signal!(sig, states::CUDA.CuVecOrMat{Complex{T}},
+    csm::AbstractMatrix{Complex{T}}) where {T<:Union{Float32,Float64}}
+    if isempty(states)
+        fill!(sig, zero(Complex{T}))
+        return nothing
+    end
+    # Bypass generic GPU matmul for CSM row views. cuBLAS requires contiguous
+    # columns and a positive leading dimension large enough for every row.
+    coils = if csm isa CUDA.StridedCuMatrix && stride(csm, 1) == 1 &&
+        stride(csm, 2) >= max(1, size(csm, 1))
+        csm
+    else
+        CUDA.CuArray(csm)
+    end
+    output = similar(states, size(sig))
+    CUDA.CUBLAS.gemmEx!('T', 'N', one(Complex{T}), reshape(states, size(states, 1), :),
+        coils, zero(Complex{T}), output)
+    sig .= output
+    return nothing
+end
+
 function run_spin_precession!(p::HO_Phantom{T}, hoseqd::HO_DiscreteSequence{T}, sig::AbstractArray{Complex{T}},
     M::Mag{T}, sim_method::BlochHighOrder) where {T<:Real}
     seq = hoseqd.seqd
@@ -62,7 +88,7 @@ function run_spin_precession!(p::HO_Phantom{T}, hoseqd::HO_DiscreteSequence{T}, 
     #Acquired signal
     if !isempty(sig)
         adc_indices = findall(cpu(seq.ADC[2:end])) .+ 1
-        sig .= transpose(Mxy[:, adc_indices]) * csm
+        combine_array_signal!(sig, Mxy[:, adc_indices], csm)
     end
     return nothing
 end
@@ -99,7 +125,7 @@ function run_spin_excitation!(p::HO_Phantom{T}, hoseqd::HO_DiscreteSequence{T}, 
         M.z  .= M.z  .* exp.(-s.Δt ./ p.T1) .+ p.ρ .* (1 .- exp.(-s.Δt ./ p.T1))
         if adc[i+1]
             Mxy = M.xy .* cis.(seq.ψ[i+1:i+1])
-            sig[sample:sample, :] .= transpose(Mxy) * p.csm
+            combine_array_signal!(view(sig, sample:sample, :), Mxy, p.csm)
             sample += 1
         end
     end
