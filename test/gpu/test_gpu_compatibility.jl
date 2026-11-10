@@ -12,6 +12,27 @@ CUDA.allowscalar(false)
 CUDA.device!(0)
 println("GPU regression device: ", CUDA.name(CUDA.device()), " / ", CUDA.uuid(CUDA.device()))
 
+@testset "Array coil combination with CUDA views" begin
+    # Coherent terms expose the rounding error of a long sequential sum.
+    nspins = 2^19
+    weights = ComplexF32[0.7-0.13im 0.5+0.25im 0.125-0.25im]
+    state = ComplexF32(0.51, 0.24)
+    for rows in (3:nspins+2, 3:2:nspins+2)
+        csm = CUDA.fill(ComplexF32(-2, 3), nspins + 4, 3)
+        view(csm, rows, :) .= CuArray(weights)
+        coils = view(csm, rows, :)
+        for nadc in (1, 2)
+            states = CUDA.fill(state, length(rows), nadc)
+            buffer = CUDA.fill(ComplexF32(-2, 3), nadc + 4, 3, 1)
+            signal = view(buffer, 3:nadc+2, :, 1)
+            HighOrderMRISim.combine_array_signal!(signal, nadc == 1 ? vec(states) : states, coils)
+            expected = repeat(length(rows) * ComplexF64(state) * ComplexF64.(weights), nadc, 1)
+            @test Array(signal) ≈ expected rtol=1e-4
+            @test all(==(ComplexF32(-2, 3)), Array(buffer)[[1, 2, nadc+3, nadc+4], :, :])
+        end
+    end
+end
+
 @testset "CUDA high-order compatibility" begin
     for precision in ("f32", "f64"), orders in ("0000", "1000", "1111"),
         coil_combination in HighOrderMRISim.HIGH_ORDER_COIL_COMBINATIONS
