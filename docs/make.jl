@@ -31,6 +31,7 @@ makedocs(
         "Getting Started" => "getting-started.md",
         "Guides" => [
             "High-Order Simulation" => "guide/simulation.md",
+            "Plotting and Field Inspection" => "guide/plotting.md",
             "2D and 3D Demos" => "guide/demos.md",
         ],
         "Migration" => "migration.md",

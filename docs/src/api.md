@@ -18,6 +18,12 @@ CurrentModule = HighOrderMRISim
 See [Field coefficients and order selection](@ref) for units, row order, and
 the rule for replacing nominal first-order gradients.
 
+```@docs
+HO_Phantom
+HO_Sequence
+BlochHighOrder
+```
+
 ## Simulation
 
 ```@docs
@@ -34,3 +40,44 @@ Use `simulate(plan; callbacks=(), verbose=true)` to run a prepared simulation.
 Its default return mode comes from the preparation parameters. Override it
 with `return_type="mat"`, `"state"`, or `"raw"`. Use the do-block form of
 `prepare_simulation` or close the plan explicitly with `close(plan)`.
+
+## Trajectory and grid helpers
+
+```@docs
+get_kspace(::HO_Sequence)
+grad2traj
+traj2grad
+InterpTrajTime
+generate_grid
+```
+
+## Plotting
+
+See [Plotting and Field Inspection](@ref) for executable examples and unit
+conventions. These helpers return figures; they do not change simulation physics.
+
+```@docs
+plt_seq
+plt_seqd
+plt_kspace
+plt_bfield
+plt_kspha
+plt_traj
+plt_phantom
+```
+
+## Legacy real-image metrics
+
+These helpers take the reference first and retain their existing fitted-scaling
+default. The reconstruction demos use HighOrderMRI's norm-normalized diagnostics
+instead; see [Validation and interpretation](@ref).
+
+```@docs
+HO_img_scale
+HO_NRMSE
+HO_MSE
+HO_RMSE
+HO_SSIM
+normalization
+standardization
+```
