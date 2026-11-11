@@ -95,13 +95,13 @@ Base.lastindex(x::HO_Sequence) = length(x.DUR)
 
 #Arithmetic operations
 +(x::HO_Sequence, y::HO_Sequence) = HO_Sequence(x.SEQ + y.SEQ, [x.GR_dfc  y.GR_dfc], [x.DUR; y.DUR])
--(x::HO_Sequence, y::HO_Sequence) = HO_Sequence(x.SEQ + y.SEQ, [x.GR_dfc -y.GR_dfc], [x.DUR; y.DUR])
+-(x::HO_Sequence, y::HO_Sequence) = HO_Sequence(x.SEQ - y.SEQ, [x.GR_dfc -y.GR_dfc], [x.DUR; y.DUR])
 -(x::HO_Sequence) = HO_Sequence(-x.SEQ, -x.GR_dfc, x.DUR)
 *(x::HO_Sequence, α::Real) = HO_Sequence(α*x.SEQ, α*x.GR_dfc, x.DUR)
 *(α::Real, x::HO_Sequence) = HO_Sequence(α*x.SEQ, α*x.GR_dfc, x.DUR)
 *(x::HO_Sequence, α::ComplexF64) = HO_Sequence(α*x.SEQ, x.GR_dfc, x.DUR)
 *(α::ComplexF64, x::HO_Sequence) = HO_Sequence(α*x.SEQ, x.GR_dfc, x.DUR)
-/(x::HO_Sequence, α::Real) = HO_Sequence(x.SEQ/α, x.GR_dfc, x.DUR)
+/(x::HO_Sequence, α::Real) = HO_Sequence(x.SEQ/α, x.GR_dfc/α, x.DUR)
 
 #Sequence object functions
 size(x::HO_Sequence) = size(x.GR_dfc[1,:])
