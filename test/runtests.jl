@@ -1,3 +1,5 @@
+ENV["MPLBACKEND"] = "Agg"
+
 using HighOrderMRISim
 using Test
 
@@ -15,3 +17,7 @@ include("unit/test_HOPhantom.jl")
 
 @info "testing... get_center_crop"
 include("unit/test_get_center_crop.jl")
+
+@info "testing... plotting"
+include("unit/test_field_plots.jl")
+include("unit/test_spatial_plots.jl")

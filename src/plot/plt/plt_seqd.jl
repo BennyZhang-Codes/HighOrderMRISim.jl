@@ -3,18 +3,20 @@
 """
     p = plt_seqd(hoseq::HO_Sequence; kwargs...)
 
-Plots a high order discretized sequence struct.
+Plots sampled nominal gradients and attached high-order fields. Curves have
+different units, stated in their legends. No order selection or field summation
+is applied for display.
 
 # Arguments
-- `hoseqd`: (`::HHO_DiscreteSequence `) HO_DiscreteSequence  struct
+- `hoseqd`: (`::HO_DiscreteSequence`) HO_DiscreteSequence struct
 - `hoseq`: (`::HO_Sequence`) HO_Sequence struct
 
 # Keywords
 - `sampling_params`: The sampling parameters for the sequence.
 - `xlabel`: the label for the x-axis.
 - `ylabel`: the label for the y-axis.
-- `width`: the width of the figure in inches.
-- `height`: the height of the figure in inches.
+- `width`: the width of the figure in centimetres.
+- `height`: the height of the figure in centimetres.
 - `fontsize_label`: the font size for the labels.
 - `fontsize_legend`: the font size for the legend.
 - `fontsize_ticklabel`: the font size for the tick labels.
@@ -32,11 +34,12 @@ Plots a high order discretized sequence struct.
 # Examples
 ```julia-repl
 julia> fig = plt_seqd(hoseq)
+```
 """
 function plt_seqd(
     hoseqd :: HO_DiscreteSequence                             ;
     xlabel             = "Time [ms]"                          ,
-    ylabel             = "Amplitude"                          ,
+    ylabel             = "Amplitude (units in legend)"        ,
     width              = 20                                   ,      
     height             = 8                                    ,  
     fontsize_label     = 7                                    ,
@@ -62,34 +65,25 @@ function plt_seqd(
         ax.spines[spine].set_visible(false)
     end
 
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.seqd.Gx*1e3, label="Gx", marker="o", color="#636efa", markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.seqd.Gy*1e3, label="Gy", marker="o", color="#EF553B", markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.seqd.Gz*1e3, label="Gz", marker="o", color="#00cc96", markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, abs.(hoseqd.seqd.B1*1e6), label="|B1|", marker="o", color="#AB63FA", markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t[hoseqd.seqd.ADC]*1e3, zeros(sum(hoseqd.seqd.ADC)), label="ADC", marker="x", color="#FF6692", markersize=marker_size, linewidth=linewidth)
+    ax.plot(hoseqd.seqd.t*1e3, hoseqd.seqd.Gx*1e3, label="Gx nominal [mT/m]", marker="o", color="#636efa", markersize=marker_size, linewidth=linewidth)
+    ax.plot(hoseqd.seqd.t*1e3, hoseqd.seqd.Gy*1e3, label="Gy nominal [mT/m]", marker="o", color="#EF553B", markersize=marker_size, linewidth=linewidth)
+    ax.plot(hoseqd.seqd.t*1e3, hoseqd.seqd.Gz*1e3, label="Gz nominal [mT/m]", marker="o", color="#00cc96", markersize=marker_size, linewidth=linewidth)
+    ax.plot(hoseqd.seqd.t*1e3, abs.(hoseqd.seqd.B1*1e6), label="|B1| [μT]", marker="o", color="#AB63FA", markersize=marker_size, linewidth=linewidth)
+    ax.plot(hoseqd.seqd.t[hoseqd.seqd.ADC]*1e3, zeros(sum(hoseqd.seqd.ADC)), label="ADC samples", marker="x", color="#FF6692", markersize=marker_size, linewidth=linewidth)
 
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h0*1e3, label="h0", marker="o", color=sh.h0.color, markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h1*1e3, label="h1", marker="o", color=sh.h1.color, markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h2*1e3, label="h2", marker="o", color=sh.h2.color, markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h3*1e3, label="h3", marker="o", color=sh.h3.color, markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h4*1e3, label="h4", marker="o", color=sh.h4.color, markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h5*1e3, label="h5", marker="o", color=sh.h5.color, markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h6*1e3, label="h6", marker="o", color=sh.h6.color, markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h7*1e3, label="h7", marker="o", color=sh.h7.color, markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h8*1e3, label="h8", marker="o", color=sh.h8.color, markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h9*1e3, label="h9", marker="o", color=sh.h9.color, markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h10*1e3, label="h10", marker="o", color=sh.h10.color, markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h11*1e3, label="h11", marker="o", color=sh.h11.color, markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h12*1e3, label="h12", marker="o", color=sh.h12.color, markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h13*1e3, label="h13", marker="o", color=sh.h13.color, markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h14*1e3, label="h14", marker="o", color=sh.h14.color, markersize=marker_size, linewidth=linewidth)
-    ax.plot(hoseqd.seqd.t*1e3, hoseqd.h15*1e3, label="h15", marker="o", color=sh.h15.color, markersize=marker_size, linewidth=linewidth)
+    for term in 0:15
+        name = Symbol("h", term)
+        field = getproperty(sh, name)
+        unit = replace(field.unit, "T" => "mT")
+        ax.plot(hoseqd.seqd.t*1e3, getproperty(hoseqd, name)*1e3, label="h$term attached [$unit]",
+            marker="o", color=field.color, markersize=marker_size, linewidth=linewidth)
+    end
 
     ax.set_xlabel(xlabel, fontsize=fontsize_label, color=color_label, labelpad=pad_label)
     ax.set_ylabel(ylabel, fontsize=fontsize_label, color=color_label, labelpad=pad_label)
 
     ax.legend(fontsize=fontsize_legend, labelcolor=color_label, scatteryoffsets=[0.5],
-    loc="upper left", bbox_to_anchor=(0.0, 1.00), ncols=15, 
+    loc="lower left", bbox_to_anchor=(0.0, 1.02), ncols=4,
     frameon=false, handlelength=1, handletextpad=0.5, columnspacing=1)
     fig.tight_layout(pad=0.0, w_pad=0.0, h_pad=0.0)
     return fig
@@ -101,7 +95,7 @@ function plt_seqd(
     hoseq ::HO_Sequence                                       ;
     sampling_params    = Dict{String,Any}(),
     xlabel             = "Time [ms]"                          ,
-    ylabel             = "Amplitude"                          ,
+    ylabel             = "Amplitude (units in legend)"        ,
     width              = 20                                   ,      
     height             = 8                                    ,  
     fontsize_label     = 7                                    ,

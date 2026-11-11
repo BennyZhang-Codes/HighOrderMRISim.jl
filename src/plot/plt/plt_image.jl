@@ -45,10 +45,8 @@ function plt_image(
     color_label        = "#000000",
     )
     nX, nY = size(img)
-    if vmax === nothing || vmin === nothing
-        vmax=quantile(reshape(img, :), vmaxp/100)
-        vmin=quantile(reshape(img, :), vminp/100)
-    end
+    isnothing(vmax) && (vmax = quantile(vec(img), vmaxp/100))
+    isnothing(vmin) && (vmin = quantile(vec(img), vminp/100))
 
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(width/2.53999863, (nY/nX)*height/2.53999863), facecolor=color_facecolor)
     ax.set_title(title, fontsize=fontsize_title, color=color_label)
@@ -117,9 +115,8 @@ function plt_images(
     if nRow === nothing || nCol === nothing
         nRow, nCol = get_factors(nFrame)
     end
-    if vmax === nothing || vmin === nothing
-        vmin, vmax = quantile(reshape(imgs, :), vminp/100), quantile(reshape(imgs, :), vmaxp/100)
-    end
+    isnothing(vmax) && (vmax = quantile(vec(imgs), vmaxp/100))
+    isnothing(vmin) && (vmin = quantile(vec(imgs), vminp/100))
     
     fig, axs = plt.subplots(nrows=nRow, ncols=nCol, figsize=(width*nCol/2.53999863, (nX/nY)*height*nRow/2.53999863), facecolor=color_facecolor)
 	axs = reshape(axs, nRow, nCol) # to keep axs as a 2D array

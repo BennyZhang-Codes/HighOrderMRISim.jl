@@ -1,7 +1,7 @@
 
 
 """
-    p = plt_phantom(hoseq::HO_Phantom; kwargs...)
+    p = plt_phantom(ph::HO_Phantom, key::Symbol; kwargs...)
 
 Plots a high order phantom object.
 
@@ -10,13 +10,14 @@ Plots a high order phantom object.
 - `key`: (`::Symbol`) key for the phantom to be plotted
 
 # Keywords
-- `t0`: (`::Real`) time offset for the phantom
-- `view_2d`: (`::Bool`) whether to plot the phantom in 2D
+- `t0`: (`::Real`) time offset in milliseconds; displacement functions receive seconds.
+- `view_2d`: (`::Bool`) whether to project the phantom in 2D (not a slice).
+- `axis`: `"axial"` (x/y), `"coronal"` (x/z), or `"sagittal"` (y/z).
 - `xlabel`: the label for the x-axis.
 - `ylabel`: the label for the y-axis.
 - `zlabel`: the label for the z-axis.
-- `width`: the width of the figure in inches.
-- `height`: the height of the figure in inches.
+- `width`: the width of the figure in centimetres.
+- `height`: the height of the figure in centimetres.
 - `fontsize_label`: the font size for the labels.
 - `fontsize_ticklabel`: the font size for the tick labels.
 - `color_facecolor`: the background color of the figure.
@@ -33,6 +34,7 @@ Plots a high order phantom object.
 # Examples
 ```julia-repl
 julia> fig = plt_phantom(phantom, :T1)
+```
 """
 function plt_phantom(
     ph                 :: HO_Phantom,
@@ -41,8 +43,8 @@ function plt_phantom(
     t0                 = 0          ,
     view_2d            = false      ,
     axis               = "axial"    ,
-    xlabel             = "x [cm]"   ,
-    ylabel             = "y [cm]"   ,
+    xlabel             = nothing    ,
+    ylabel             = nothing    ,
     zlabel             = "z [cm]"   ,
     width              = 20         ,      
     height             = 20         ,  
@@ -99,7 +101,7 @@ function plt_phantom(
 		cmap="gray"
     elseif key == :csm_mag || key == :csm_pha || key == :csm_real || key == :csm_imag
         factor = 1
-        unit=""
+        unit = key == :csm_pha ? " rad" : ""
         cmap="gray"
 	else
 		factor = 1
@@ -109,8 +111,12 @@ function plt_phantom(
 	end
 	cmin_key *= factor
 	cmax_key *= factor
-	x0 = -maximum(abs.([ph.x ph.y ph.z]))*1e2
-    xf =  maximum(abs.([ph.x ph.y ph.z]))*1e2
+    xt = ph.x .+ ph.ux(ph.x, ph.y, ph.z, t0*1e-3)
+    yt = ph.y .+ ph.uy(ph.x, ph.y, ph.z, t0*1e-3)
+    zt = ph.z .+ ph.uz(ph.x, ph.y, ph.z, t0*1e-3)
+    xf = maximum(maximum(abs, coordinates) for coordinates in (xt, yt, zt))*1e2
+    iszero(xf) && (xf = 1.0)
+    x0 = -xf
 
 	fig = plt.figure(figsize=(width/2.53999863, height/2.53999863),facecolor=color_facecolor)
 
@@ -140,26 +146,20 @@ function plt_phantom(
         ax.set_xlim(x0,xf)
         ax.set_ylim(x0,xf)
         
-        px = []
-        py = []
         if axis == "axial"
-            px = ph.x .+ ph.ux(ph.x,ph.y,ph.z,t0*1e-3)
-            py = ph.y .+ ph.uy(ph.x,ph.y,ph.z,t0*1e-3)
-            xlabel = "x [cm]"
-            ylabel = "y [cm]"
+            px, py = xt, yt
+            default_xlabel, default_ylabel = "x [cm]", "y [cm]"
         elseif axis == "coronal"
-            px = ph.y .+ ph.ux(ph.x,ph.y,ph.z,t0*1e-3)
-            py = ph.z .+ ph.uz(ph.x,ph.y,ph.z,t0*1e-3)
-            xlabel = "x [cm]"
-            ylabel = "z [cm]"
+            px, py = xt, zt
+            default_xlabel, default_ylabel = "x [cm]", "z [cm]"
         elseif axis == "sagittal"
-            px = ph.x .+ ph.uy(ph.x,ph.y,ph.z,t0*1e-3)
-            py = ph.z .+ ph.uz(ph.x,ph.y,ph.z,t0*1e-3)
-            xlabel = "y [cm]"
-            ylabel = "z [cm]"
+            px, py = yt, zt
+            default_xlabel, default_ylabel = "y [cm]", "z [cm]"
         else
             error("axis must be axial, coronal or sagittal")
         end
+        xlabel = something(xlabel, default_xlabel)
+        ylabel = something(ylabel, default_ylabel)
         
         sc = ax.scatter(
             px*1e2,
@@ -168,7 +168,7 @@ function plt_phantom(
             cmap=cmap, vmin=cmin_key, vmax=cmax_key
         )
         cb = fig.colorbar(sc, ax=ax, shrink=0.6)
-        cb.ax.set_title("[$(String(key))]", fontsize=fontsize_ticklabel, color=color_label, pad=pad_label)
+        cb.ax.set_title("[$(String(key))]$unit", fontsize=fontsize_ticklabel, color=color_label, pad=pad_label)
         cb.ax.tick_params(color=color_label, labelcolor=color_label, labelsize=fontsize_ticklabel,length=ticklength, width=linewidth, pad=pad_labeltick)
         cb.outline.set_visible(false)
         cb.update_ticks()
@@ -197,19 +197,19 @@ function plt_phantom(
         ax.set_facecolor(color_facecolor)
 
         sc = ax.scatter(
-            (ph.x .+ ph.ux(ph.x,ph.y,ph.z,t0*1e-3))*1e2,
-            (ph.y .+ ph.uy(ph.x,ph.y,ph.z,t0*1e-3))*1e2,
-            (ph.z .+ ph.uz(ph.x,ph.y,ph.z,t0*1e-3))*1e2, 
+            xt*1e2, yt*1e2, zt*1e2,
             marker=".", s=markersize, c=c,  
             cmap=cmap, vmin=cmin_key, vmax=cmax_key
         )
         cb = fig.colorbar(sc, ax=ax, shrink=0.6)
-        cb.ax.set_title("[$(String(key))]", fontsize=fontsize_ticklabel, color=color_label, pad=pad_label)
+        cb.ax.set_title("[$(String(key))]$unit", fontsize=fontsize_ticklabel, color=color_label, pad=pad_label)
         cb.ax.tick_params(color=color_label, labelcolor=color_label, labelsize=fontsize_ticklabel,length=ticklength, width=linewidth, pad=pad_labeltick)
         cb.outline.set_visible(false)
         cb.update_ticks()
 
         ax.set_zlabel(zlabel, fontsize=fontsize_label, color=color_label, labelpad=pad_label)
+        xlabel = something(xlabel, "x [cm]")
+        ylabel = something(ylabel, "y [cm]")
     end
 
     ax.set_xlabel(xlabel, fontsize=fontsize_label, color=color_label, labelpad=pad_label)
