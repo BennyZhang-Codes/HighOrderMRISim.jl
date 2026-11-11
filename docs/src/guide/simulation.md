@@ -5,6 +5,13 @@ The phantom holds one row of receive sensitivities per spin and one column per
 coil. The sequence wraps a native KomaMRI `Sequence` and attaches field events
 by block. [Getting Started](@ref) builds both inputs from scratch.
 
+If `csm` is omitted, `HO_Phantom` uses one ideal receive coil with sensitivity
+`1 + 0im` at every spin: unit amplitude, zero additional phase, and no signal
+normalization. Default numeric arrays preserve Float32/Float64 coordinate precision, so both
+`HO_Phantom(x=Float32[0])` and `HO_Phantom(x=Float64[0])` work without a CSM.
+Explicit CSM values, including zeros and complex phases, are not normalized or
+replaced. This receive-coil default does not change the transmit B1 model.
+
 ## Field coefficients and order selection
 
 Each column of `hoseq.GR_dfc` corresponds to one sequence block. Row `n + 1`

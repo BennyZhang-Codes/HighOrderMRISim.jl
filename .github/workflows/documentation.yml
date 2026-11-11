@@ -120,12 +120,23 @@ jobs:
           path: |
             ${{ steps.depot.outputs.path }}/artifacts
             ${{ steps.depot.outputs.path }}/compiled
+            ${{ steps.depot.outputs.path }}/conda
             ${{ steps.depot.outputs.path }}/packages
             ${{ steps.depot.outputs.path }}/registries
-          key: docs-julia-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.julia.outputs.julia-version }}-py${{ steps.python.outputs.python-version }}-${{ hashFiles('Project.toml', 'docs/Project.toml', 'release-source/Project.toml', 'release-source/docs/Project.toml') }}
+          key: docs-julia-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.julia.outputs.julia-version }}-py${{ steps.python.outputs.python-version }}-${{ hashFiles('Project.toml', 'docs/Project.toml', 'release-source/Project.toml', 'release-source/docs/Project.toml') }}
 
       - name: Instantiate the documentation environment
+        env:
+          # Restore runner-local Python configuration before precompiling.
+          JULIA_PKG_PRECOMPILE_AUTO: '0'
         run: julia --startup-file=no --project="$DOCS_SOURCE/docs" -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Rebuild cached Python bindings
+        env:
+          JULIA_PKG_PRECOMPILE_AUTO: '0'
+        # PyCall's dependency build ensures Conda's root directory exists,
+        # then binds PyCall to the Python selected by setup-python on this runner.
+        run: julia --startup-file=no --project="$DOCS_SOURCE/docs" -e 'using Pkg; Pkg.build("PyCall"; verbose=true)'
 
       - name: Test documentation publication rules
         run: julia --startup-file=no --project="$DOCS_SOURCE/docs" docs/publish/runtests.jl

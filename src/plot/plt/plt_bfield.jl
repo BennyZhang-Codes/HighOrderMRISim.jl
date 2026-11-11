@@ -2,13 +2,16 @@
     fig = plt_bfield(bfield::AbstractArray{<:Real, 2}, dt::Float64; kwargs...)
 
 # Description
-    Plots k coefficients of spherical harmonic terms using matplotlib 
+    Plots spherical-harmonic field coefficients through second or third order.
 
 # Arguments
-- `bfield::AbstractArray{<:Real, 2}`: `[nSample, nTerms]` coefficients in units of rad, rad/m and rad/m^2.
+- `bfield::AbstractArray{<:Real, 2}`: `[nSample, nTerms]` field coefficients; 9 or 16 columns.
 - `dt::Float64`: sampling time in seconds.
 
 # Keywords
+- `units`: `:mT` (default) or `:T`; labels the supplied values without rescaling them.
+  The corresponding order-n unit is mT/m^n or T/m^n, not radians.
+- `times`: optional sample times in seconds. Otherwise the legacy `dt:dt:nSample*dt` axis is used.
 - `width`: (`::Real`, `=15`) figure's width
 - `height`: (`::Real`, `=7`) figure's height
 - `fontsize_label`: (`::Real`, `=7`) font size of labels
@@ -32,6 +35,8 @@ julia> fig = plt_bfield(bfield, dt)
 function plt_bfield(
     bfield::AbstractArray{<:Real, 2},
     dt::Float64;
+    units              = :mT      ,
+    times              = nothing  ,
     width              = 15       ,
     height             = 7        ,
     fontsize_label     = 7        ,
@@ -44,16 +49,13 @@ function plt_bfield(
     pad_label          = 2        ,
     pad_labeltick      = 2        ,
     )
-    @assert size(bfield, 2) >= 9 "bfield should be a 2D array with 9 rows for 0th-2nd order terms"
-    nSample = size(bfield, 1)
-    t = (1:nSample)*dt*1e3;
-    
-    color_dfc  = ["#5f4690", "#1d6996", "#38a6a5", "#0f8554", "#73af48", "#edad08", "#e17c05", "#cc503e", "#94346e"];
-    legend_dfc = [L"1", L"x", L"y", L"z", L"xy", L"zy", L"2z^2-(x^2+y^2)", L"xz", L"x^2-y^2"];
-    
-    fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(width/2.53999863, height/2.53999863), sharex=true, facecolor=color_facecolor, squeeze=false)
-    
-    ax0, ax1, ax2 = axs;
+    nSample, nTerm = size(bfield)
+    @assert nTerm in (9, 16) "nTerm must be 9 or 16 for up to 2nd or 3rd order spherical harmonics"
+    units in (:mT, :T) || throw(ArgumentError("units must be :mT or :T."))
+    unit_labels = coefficient_plot_units(units)
+    t = coefficient_plot_times(nSample, dt, times)
+    nRow = nTerm == 9 ? 3 : 4
+    fig, axs = plt.subplots(nrows=nRow, ncols=1, figsize=(width/2.53999863, height/2.53999863), sharex=true, facecolor=color_facecolor, squeeze=false)
     
     for ax in axs
         ax.set_xlim(t[1]-1, t[end]+1);
@@ -66,27 +68,19 @@ function plt_bfield(
         end
     end
     
-    ax0.plot(t, bfield[:, 1], linewidth=linewidth, color=color_dfc[1], label=legend_dfc[1])
-    
-    ax1.plot(t, bfield[:, 2], linewidth=linewidth, color=color_dfc[2], label=legend_dfc[2])
-    ax1.plot(t, bfield[:, 3], linewidth=linewidth, color=color_dfc[3], label=legend_dfc[3])
-    ax1.plot(t, bfield[:, 4], linewidth=linewidth, color=color_dfc[4], label=legend_dfc[4])
-    
-    ax2.plot(t, bfield[:, 5], linewidth=linewidth, color=color_dfc[5], label=legend_dfc[5])
-    ax2.plot(t, bfield[:, 6], linewidth=linewidth, color=color_dfc[6], label=legend_dfc[6])
-    ax2.plot(t, bfield[:, 7], linewidth=linewidth, color=color_dfc[7], label=legend_dfc[7])
-    ax2.plot(t, bfield[:, 8], linewidth=linewidth, color=color_dfc[8], label=legend_dfc[8])
-    ax2.plot(t, bfield[:, 9], linewidth=linewidth, color=color_dfc[9], label=legend_dfc[9])
-    for ax in axs
-        ax.legend(bbox_to_anchor=(0.01, 1.1), fontsize=fontsize_legend, labelcolor=color_label, 
+    term_ranges = (1:1, 2:4, 5:9, 10:16)
+    order_labels = ("0th", "1st", "2nd", "3rd")
+    for row in 1:nRow
+        ax = axs[row, 1]
+        for term in term_ranges[row]
+            ax.plot(t, bfield[:, term], linewidth=linewidth, color=spha_color[term], label=spha_basis_latex[term])
+        end
+        ax.set_ylabel("$(order_labels[row]) order [$(unit_labels[row])]", fontsize=fontsize_label, color=color_label, labelpad=pad_label)
+        ax.legend(bbox_to_anchor=(0.01, 1.02), fontsize=fontsize_legend, labelcolor=color_label,
                 scatteryoffsets=[0.5],
-                ncols=5, loc="upper left", frameon=false, handlelength=1, handletextpad=0.5, columnspacing=1)
+                ncols=row == 4 ? 4 : 5, loc="lower left", frameon=false, handlelength=1, handletextpad=0.5, columnspacing=1)
     end
-    ax0.set_ylabel(L"0^{th} \ order \ [mT]", fontsize=fontsize_label, color=color_label, labelpad=pad_label)
-    ax1.set_ylabel(L"1^{st} \ order \ [mT/m]", fontsize=fontsize_label, color=color_label, labelpad=pad_label)
-    ax2.set_ylabel(L"2^{nd} \ order \ [mT/m^2]", fontsize=fontsize_label, color=color_label, labelpad=pad_label)
-    
-    ax2.set_xlabel(L"Time \ [ms]", fontsize=fontsize_label, color=color_label, labelpad=pad_label)
+    axs[end, 1].set_xlabel(L"Time \ [ms]", fontsize=fontsize_label, color=color_label, labelpad=pad_label)
     
     fig.align_ylabels()
     fig.tight_layout(pad=0, w_pad=0, h_pad=0)
@@ -98,13 +92,15 @@ end
     fig = plt_bfield_com(bfield1::AbstractArray{<:Real, 2}, bfield2::AbstractArray{<:Real, 2}, dt::Float64; kwargs...)
 
 # Description
-    Plots k coefficients of spherical harmonic terms using matplotlib 
+    Compares spherical-harmonic field coefficients through second or third order.
 
 # Arguments
-- `bfield1::AbstractArray{<:Real, 2}`: `[nSample, nTerms]` coefficients in units of rad, rad/m and rad/m^2.
+- `bfield1`, `bfield2`: equally sized `[nSample, nTerms]` field coefficients; 9 or 16 columns.
 - `dt::Float64`: sampling time in seconds.
 
 # Keywords
+- `units`: `:mT` (default) or `:T`; labels values without rescaling them.
+- `times`: optional common sample times in seconds; otherwise the legacy `dt:dt:nSample*dt` axis is used.
 - `width`: (`::Real`, `=15`) figure's width
 - `height`: (`::Real`, `=7`) figure's height
 - `fontsize_label`: (`::Real`, `=7`) font size of labels
@@ -129,6 +125,8 @@ function plt_bfield_com(
     bfield1::AbstractArray{<:Real, 2},
     bfield2::AbstractArray{<:Real, 2},
     dt::Float64;
+    units              = :mT      ,
+    times              = nothing  ,
     width              = 15       ,
     height             = 8        ,
     fontsize_label     = 7        ,
@@ -142,18 +140,18 @@ function plt_bfield_com(
     pad_labeltick      = 2        ,
     )
 
-    @assert size(bfield1, 2) >= 9 "bfield should be a 2D array with 9 rows for 0th-2nd order terms"
-    nSample = size(bfield1, 1)
-    t = (1:nSample)*dt*1e3;
+    size(bfield1) == size(bfield2) || throw(DimensionMismatch("The field coefficient matrices must have the same size."))
+    nSample, nTerm = size(bfield1)
+    @assert nTerm in (9, 16) "nTerm must be 9 or 16 for up to 2nd or 3rd order spherical harmonics"
+    units in (:mT, :T) || throw(ArgumentError("units must be :mT or :T."))
+    unit_labels = coefficient_plot_units(units)
+    t = coefficient_plot_times(nSample, dt, times)
+    nRow = nCol = nTerm == 9 ? 3 : 4
+    fig, axs = plt.subplots(nrows=nRow, ncols=nCol, figsize=(width/2.53999863, height/2.53999863),facecolor=color_facecolor, squeeze=false)
     
-    color_dfc  = ["#5f4690", "#1d6996", "#38a6a5", "#0f8554", "#73af48", "#edad08", "#e17c05", "#cc503e", "#94346e"];
-    legend_dfc = [L"1", L"x", L"y", L"z", L"xy", L"zy", L"2z^2-(x^2+y^2)", L"xz", L"x^2-y^2"];
-    
-    fig, axs = plt.subplots(nrows=3, ncols=3, figsize=(width/2.53999863, height/2.53999863),facecolor=color_facecolor, squeeze=false)
-    
-    for row = 1:3, col = 1:3
+    for row = 1:nRow, col = 1:nCol
         ax = axs[row, col]
-        term = (row-1)*3 + col
+        term = (row-1)*nCol + col
     
         ax.set_xlim(t[1]-1, t[end]+1);
         ax.set_facecolor(color_facecolor)
@@ -168,14 +166,9 @@ function plt_bfield_com(
         ax.plot(t, bfield2[:, term], linewidth=linewidth, label="bfield 2")
         ax.set_xlabel(L"Time \ [ms]", fontsize=fontsize_label, color=color_label, labelpad=pad_label)
         
-        if term == 1
-            ylabel = legend_dfc[term] * L"\ [mT]"
-        elseif term <=4
-            ylabel = legend_dfc[term] * L"\ [mT/m]"
-        elseif term <= 9
-            ylabel = legend_dfc[term] * L"\ [mT/m^2]"
-        end
-        ax.set_ylabel(ylabel, fontsize=fontsize_label, color=color_dfc[term], labelpad=pad_label)
+        order = term == 1 ? 0 : term <= 4 ? 1 : term <= 9 ? 2 : 3
+        ylabel = "$(spha_basis[term]) [$(unit_labels[order+1])]"
+        ax.set_ylabel(ylabel, fontsize=fontsize_label, color=spha_color[term], labelpad=pad_label)
         ax.legend(bbox_to_anchor=(0.01, 1.05), fontsize=fontsize_legend, labelcolor=color_label, 
                 scatteryoffsets=[0.5],
                 ncols=5, loc="upper left", frameon=false, handlelength=1, handletextpad=0.5, columnspacing=1)

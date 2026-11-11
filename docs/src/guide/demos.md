@@ -15,10 +15,10 @@ the root Julia project. From the repository root, run:
 julia --startup-file=no --project=demo -e 'using Pkg; Pkg.instantiate()'
 ```
 
-The demo manifest pins HighOrderMRISim at `087f1b8` and HighOrderMRI at
-`245e430`, including its `MRIGeometry` subpackage. The simulator pin predates
-the version-only change to 0.2.0 and preserves the validated code. The pinned
-dependencies use public HTTPS repositories.
+The demo manifest pins HighOrderMRISim to `v0.2.1` (`9dce837`), including the
+CUDA coil-signal and CSM stride fixes. HighOrderMRI and its `MRIGeometry`
+subpackage remain at the validated commit `245e430`. The pinned dependencies
+use public HTTPS repositories.
 
 ## Run simulation and reconstruction
 
