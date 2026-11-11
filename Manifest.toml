@@ -2,7 +2,7 @@
 
 julia_version = "1.12.7"
 manifest_format = "2.0"
-project_hash = "ecbe3bf52a28d76a407add6572f403f371e17001"
+project_hash = "528c52850618f474fb1c013009e180da2cd9f6d6"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -706,7 +706,7 @@ version = "0.2.0"
 deps = ["CUDA", "Functors", "ImageDistances", "ImageMorphology", "ImageQualityIndexes", "ImageTransformations", "Interpolations", "KernelAbstractions", "KomaMRI", "KomaMRIBase", "KomaMRICore", "KomaMRIFiles", "KomaMRIPlots", "LinearAlgebra", "MAT", "MRIBase", "Parameters", "Pkg", "ProgressMeter", "PyPlot", "Reexport", "Statistics", "ThreadsX"]
 path = "."
 uuid = "6437142c-3aa9-4303-9277-bb0012cca490"
-version = "0.2.1"
+version = "0.2.2"
 
 [[deps.HostCPUFeatures]]
 deps = ["BitTwiddlingConvenienceFunctions", "IfElse", "Libdl", "Preferences", "Static"]

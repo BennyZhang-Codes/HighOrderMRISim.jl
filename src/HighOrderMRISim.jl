@@ -43,7 +43,8 @@ include("simulation/simulation.jl")
 
 include("plot/plot.jl")
 
-#Package version
+# Package version; invalidate precompilation when project metadata changes.
+Base.include_dependency(joinpath(@__DIR__, "..", "Project.toml"))
 const __VERSION__ = pkgversion(@__MODULE__)
 
 end # module HighOrderMRISim
