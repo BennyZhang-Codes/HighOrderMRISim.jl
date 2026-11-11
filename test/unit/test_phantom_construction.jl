@@ -4,6 +4,48 @@ using HighOrderMRISim
 isdefined(@__MODULE__, :compatibility_sequence) ||
     include(joinpath(@__DIR__, "..", "support", "compatibility_workload.jl"))
 
+@testset "Phantom display" begin
+    @testset "$T" for T in (Float32, Float64)
+        for constructor in (HO_Phantom, HO_Phantom{T})
+            obj = constructor(x=T[])
+            expected = "HO_Phantom[spins | nCoil=1 | nSpin=0 | empty ]"
+            @test sprint(show, obj) == expected
+            @test repr("text/plain", obj) == expected
+            @test show(IOBuffer(), obj) === nothing
+            @test size(obj.csm) == (0, 1)
+
+            for ncoil in (0, 2)
+                obj = constructor(name="empty", x=T[], csm=zeros(Complex{T}, 0, ncoil))
+                expected = "HO_Phantom[empty | nCoil=$ncoil | nSpin=0 | empty ]"
+                @test sprint(show, obj) == expected
+                @test repr("text/plain", obj) == expected
+                @test size(obj.csm) == (0, ncoil)
+            end
+
+            # Keep the existing nonempty summary and centimeter conversion.
+            obj = constructor(name="display", x=T[-0.125, 0.25], y=T[0.5, -0.75],
+                              z=T[-1, 1.5], csm=ones(Complex{T}, 2, 2))
+            coordinates = map(copy, (obj.x, obj.y, obj.z))
+            expected = "HO_Phantom[display | nCoil=2 | nSpin=2 | " *
+                "x=-12.5:25.0 cm | y=-75.0:50.0 cm | z=-100.0:150.0 cm ]"
+            @test sprint(show, obj) == expected
+            @test repr("text/plain", obj) == expected
+            @test show(IOBuffer(), obj) === nothing
+            @test (obj.x, obj.y, obj.z) == coordinates
+            @test obj.csm == ones(Complex{T}, 2, 2)
+
+            # Filtering all spins can produce either an empty copy or a view.
+            for empty in (obj[1:0], view(obj, 1:0))
+                expected = "HO_Phantom[display | nCoil=2 | nSpin=0 | empty ]"
+                @test sprint(show, empty) == expected
+                @test repr("text/plain", empty) == expected
+                @test length(empty) == 0
+                @test size(empty.csm) == (0, 2)
+            end
+        end
+    end
+end
+
 @testset "Phantom construction and default receive coil" begin
     @testset "$T" for T in (Float32, Float64)
         @testset "Omitted CSM: $n spins" for n in (0, 1, 3)

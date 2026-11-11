@@ -73,6 +73,10 @@ end
 @functor HO_Phantom
 Base.show(io::IO, s::HO_Phantom) = begin
 	nSpin, nCoil = size(s.csm)
+	if isempty(s.x)
+		print(io, "HO_Phantom[$(s.name) | nCoil=$(nCoil) | nSpin=$(nSpin) | empty ]")
+		return nothing
+	end
 	x_min, x_max = round(minimum(s.x)*1e2, digits=2), round(maximum(s.x)*1e2, digits=2)
 	y_min, y_max = round(minimum(s.y)*1e2, digits=2), round(maximum(s.y)*1e2, digits=2)
 	z_min, z_max = round(minimum(s.z)*1e2, digits=2), round(maximum(s.z)*1e2, digits=2)
