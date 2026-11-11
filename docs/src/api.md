@@ -8,7 +8,7 @@ CurrentModule = HighOrderMRISim
 
 | Interface | Purpose |
 | --- | --- |
-| `HO_Phantom(; x, ...)` | Spin coordinates, density, relaxation, off-resonance, and receive sensitivities. Supply `csm` with shape `(nspin, ncoil)`. |
+| `HO_Phantom(; x, ...)` | Spin coordinates, density, relaxation, off-resonance, and receive sensitivities. Optional `csm` has shape `(nspin, ncoil)`; the default is one unit-sensitivity receive coil. |
 | `HO_Sequence(sequence)` | Wrap a KomaMRI sequence with zero-valued dynamic field events. |
 | `HO_Sequence(sequence, fields)` | Wrap a sequence and attach block-aligned `Grad` events, with one column per sequence block. |
 | `BlochHighOrder(mask)` | Select the zeroth through third field orders using a four-digit string such as `"1111"`. |

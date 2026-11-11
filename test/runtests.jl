@@ -13,6 +13,7 @@ include("unit/test_sampled_storage.jl")
 include("unit/test_csm.jl")
 
 @info "testing... HOPhantom"
+include("unit/test_phantom_construction.jl")
 include("unit/test_HOPhantom.jl")
 
 @info "testing... get_center_crop"
