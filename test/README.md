@@ -14,8 +14,9 @@ test/
 
 ## Environment
 
-Run commands from the repository root using the default Julia environment, with
-this checkout registered through `Pkg.develop(path="/path/to/HighOrderMRISim.jl")`.
+Run commands from the repository root with `--project=.` to test this checkout.
+Use an isolated Julia depot if desired; no change to the default Julia project
+or a default-environment `Pkg.develop` registration is required.
 The current compatibility baseline uses Julia 1.12.7, KomaMRI 0.15.0,
 KomaMRIBase 0.15.2, KomaMRICore 0.14.0, and CUDA.jl 6.4.2.
 Includes resolve relative to the scripts, so absolute entry-point paths also
@@ -24,7 +25,7 @@ work from other directories. No test activates another Julia environment.
 ## Default CPU suite
 
 ```bash
-julia --startup-file=no --threads=4 test/runtests.jl
+julia --startup-file=no --project=. --threads=4 -e 'using Pkg; Pkg.instantiate(); Pkg.test()'
 ```
 
 This is also the entry point used by `Pkg.test`. It does not require a CUDA
@@ -52,7 +53,7 @@ device index is then zero. Replace the placeholder below with that GPU's UUID.
 
 ```bash
 export CUDA_VISIBLE_DEVICES="<GPU-UUID>"
-julia --startup-file=no --threads=4 test/gpu/runtests.jl
+julia --startup-file=no --project=. --threads=4 test/gpu/runtests.jl
 ```
 
 The runner executes the five kernel/compatibility regression files and prepared
@@ -71,7 +72,7 @@ Individual files remain runnable with the same GPU selection:
 | `test_gpu_rf_buffers.jl` | Actual RF ADC capacity, zero-capacity buffers, RF acquisition, block splitting, guarded outputs, and reuse |
 
 ```bash
-julia --startup-file=no --threads=4 test/gpu/test_gpu_rf_buffers.jl
+julia --startup-file=no --project=. --threads=4 test/gpu/test_gpu_rf_buffers.jl
 ```
 
 Both f32 and f64 are tested. Signal comparisons retain precision-specific
@@ -84,7 +85,7 @@ Run this separately from the single-device suite, exposing only approved GPUs:
 
 ```bash
 CUDA_VISIBLE_DEVICES="<GPU-UUID-1>,<GPU-UUID-2>" \
-  julia --startup-file=no --threads=4 test/gpu/runtests_multigpu.jl
+  julia --startup-file=no --project=. --threads=4 test/gpu/runtests_multigpu.jl
 ```
 
 The suite checks both precisions and every coil path, finite T1/T2 history,
@@ -106,8 +107,8 @@ tests check concrete homogeneous storage and mixed-vector compatibility.
 With NVIDIA Compute Sanitizer installed and the same single-GPU selection:
 
 ```bash
-compute-sanitizer --tool memcheck --error-exitcode 99 julia --startup-file=no --threads=4 test/gpu/sanitize_gpu_fused_coils.jl
-compute-sanitizer --tool racecheck --error-exitcode 99 julia --startup-file=no --threads=4 test/gpu/sanitize_gpu_fused_coils.jl
+compute-sanitizer --tool memcheck --error-exitcode 99 julia --startup-file=no --project=. --threads=4 test/gpu/sanitize_gpu_fused_coils.jl
+compute-sanitizer --tool racecheck --error-exitcode 99 julia --startup-file=no --project=. --threads=4 test/gpu/sanitize_gpu_fused_coils.jl
 ```
 
 The small sanitizer workload uses padded spins, partial ADC/coil tiles, guarded

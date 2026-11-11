@@ -163,4 +163,27 @@ import PyPlot
             end
         end
     end
+
+    @testset "Phantom plot input validation" begin
+        for T in (Float32, Float64)
+            empty = HO_Phantom(x=T[])
+            @test_throws ArgumentError plt_phantom(empty, :ρ)
+            state = HighOrderMRISim.Mag(Complex{T}[], T[])
+            @test_throws ArgumentError plt_magnetization(empty, state, :xy_mag)
+            ph = HO_Phantom(x=T[0, 0.01])
+            @test_throws ArgumentError plt_phantom(ph, :unknown)
+            @test_throws ArgumentError plt_phantom(ph, :csm_mag; coil_idx=0)
+            @test_throws ArgumentError plt_phantom(ph, :csm_mag; coil_idx=2)
+            @test_throws ArgumentError plt_phantom(ph, :ρ; t0=NaN)
+            malformed = deepcopy(ph)
+            malformed.y = T[0]
+            @test_throws DimensionMismatch plt_phantom(malformed, :ρ)
+            fig = plt_phantom(ph, :ρ; view_2d=true)
+            try
+                @test all(!spine.get_visible() for spine in first(fig.axes).spines.values())
+            finally
+                PyPlot.close(fig)
+            end
+        end
+    end
 end
