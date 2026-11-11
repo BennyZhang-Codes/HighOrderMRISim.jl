@@ -92,8 +92,8 @@ function _resample_csm(
     out = zeros(Complex{T}, target_matrix..., size(data, 4))
 
     for c in axes(data, 4)
-        real_itp = interpolate(real(data[:,:,:,c]), BSpline(Linear()), OnGrid())
-        imag_itp = interpolate(imag(data[:,:,:,c]), BSpline(Linear()), OnGrid())
+        real_itp = interpolate(real(data[:,:,:,c]), BSpline(Linear()))
+        imag_itp = interpolate(imag(data[:,:,:,c]), BSpline(Linear()))
         real_itp = scale(real_itp, source_axes...)
         imag_itp = scale(imag_itp, source_axes...)
 

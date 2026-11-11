@@ -121,21 +121,38 @@ for detailed environment and plotting setup.
 
 ## Usage
 
-### Simulate with your own inputs
+### Run a small CPU simulation
 
-Given an `HO_Phantom` (`obj`) and an `HO_Sequence` (`hoseq`):
+This example needs no dataset. It adds a second-order field during readout
+and uses the default unit-sensitivity receive coil:
 
 ```julia
-using HighOrderMRISim, CUDA
+using HighOrderMRISim
 
-sim_params = Dict{String,Any}("sim_method" => BlochHighOrder("1111"),
-    "precision" => "f32", "return_type" => "mat")
-signal = simulate(obj, hoseq, Scanner(); sim_params, array_type=CuArray, gpus=[0])
+seq = Sequence()
+τ = 1e-4
+@addblock seq += RF(1 / (4γ * τ), τ)
+@addblock seq += ADC(8, 1e-3)
+hoseq = HO_Sequence(seq)
+hoseq.GR_dfc[5, 2] = Grad(0.05, 1e-3) # xy field in T/m²
+obj = HO_Phantom(x=[-0.005, 0.005], y=[0.004, 0.004],
+    ρ=[1.0, 0.7], T1=[Inf, Inf], T2=[Inf, Inf])
+sim_params = Dict{String,Any}("sim_method" => BlochHighOrder("0010"),
+    "precision" => "f64", "return_type" => "mat")
+signal = simulate(obj, hoseq, Scanner(); sim_params, array_type=Array)
 ```
 
-Use the zero-based device numbers listed by `CUDA.devices()`. Set
-`gpus=[0, 1]` for two GPUs, or use `array_type=Array` and omit `gpus` for CPU
-simulation.
+The output axes are ADC samples, receive coils, and a trailing singleton dimension.
+For the same simulation on GPU:
+
+```julia
+using CUDA
+signal_gpu = simulate(obj, hoseq, Scanner(); sim_params, array_type=CuArray, gpus=[0])
+```
+
+Use the zero-based device numbers listed by `CUDA.devices()`, or `gpus=[0, 1]`
+for two GPUs. See the [plotting guide](docs/src/guide/plotting.md) for sequence,
+field, trajectory, and phantom figures.
 
 ### Run the demos
 

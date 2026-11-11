@@ -11,6 +11,13 @@ normalization. Default numeric arrays preserve Float32/Float64 coordinate precis
 `HO_Phantom(x=Float32[0])` and `HO_Phantom(x=Float64[0])` work without a CSM.
 Explicit CSM values, including zeros and complex phases, are not normalized or
 replaced. This receive-coil default does not change the transmit B1 model.
+For the bundled real receive map, `load_csm(:real_32cha, nCoil, ...)` selects
+the first 1 to 32 channels without renormalizing the selected subset. Phantom
+source voxel sizes come from `BrainPhantom` metadata in millimeters; simulation
+coordinates and target voxel sizes remain in meters.
+Source label voxels extend to their outer half-voxel faces; queries beyond that
+physical FOV are zero. Nearest-neighbor label interpolation is unchanged inside
+the source grid.
 
 ## Field coefficients and order selection
 
@@ -98,3 +105,41 @@ Each run starts from the initial magnetization and returns independent host
 output. Prepare a new plan when model inputs change. For a plan created without
 a do-block, call `close(plan)` in `finally`. Measure setup and repeated execution
 separately; multi-GPU execution is not necessarily faster for a single run.
+
+## Trajectories and field events
+
+`get_kspace(hoseq)` returns four matrices: nominal encoding, nominal encoding at
+ADC times, attached-field encoding, and attached-field encoding at ADC times.
+Nominal encoding has three columns in cycles/m. Attached-field encoding has
+16 columns: order ``n`` has units cycles/mⁿ, including dimensionless cycles at
+order zero. Multiply by ``2π`` only when radians are needed.
+
+`grad2traj(field, dt)` integrates with the trapezoidal rule and retains the
+sample count. `traj2grad(trajectory, dt)` computes consecutive differences and
+returns one fewer sample along the selected dimension. Neither helper applies
+``γ`` or a unit conversion; differentiating coefficients in cycles/mⁿ requires
+division by ``γ`` to obtain T/mⁿ. The two numerical operations are not exact
+inverses for arbitrary waveforms.
+
+Map interval values to sequence events explicitly. Do not differentiate across
+RF resets or assume that measured trajectory samples and field intervals have
+the same time origin. `InterpTrajTime` uses seconds, subtracts `delTime` from
+input knot times, and extrapolates out-of-range queries to zero. It preserves
+the trajectory precision even when query times use another real precision.
+The bundled demos retain their validated dataset-specific timing conventions.
+
+## Input checks and model limits
+
+Every spin-property vector must have the same length, and the CSM must have
+one row per spin. Simulation rejects inconsistent storage before selecting a
+device. Empty phantoms can be displayed and iterated, but cannot be simulated.
+Nonempty phantoms with different displacement functions cannot be concatenated:
+one global set of functions cannot preserve both motion models.
+
+RF excitation uses nominal gradients; high-order fields apply during free
+precession. Sampling and simulation require a single transmit RF channel;
+additional native RF rows are rejected rather than silently ignored. Raw sequence
+plots can still display multiple RF rows. Motion uses the array path, not the static CUDA kernel. `T2s` and
+diffusion-related phantom fields are retained for compatibility, but the
+implemented integrator evolves T1/T2 relaxation and does not add an independent
+T2s or diffusion model. Stored fields do not imply additional simulated physics.

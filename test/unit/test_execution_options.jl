@@ -22,4 +22,21 @@ using Test, HighOrderMRISim
         @test_throws ArgumentError simulate(obj, seq, Scanner(); sim_params=params,
                                             array_type, gpus, verbose=false)
     end
+
+    @testset "Narrowly inferred parameter dictionaries" begin
+        for settings in (Dict("sim_method" => BlochHighOrder("0000")),
+                         Dict("precision" => "f64"), Dict("gpu" => false))
+            snapshot = copy(settings)
+            signal = simulate(obj, seq, Scanner(); sim_params=settings, array_type=Array, verbose=false)
+            reference = simulate(obj, seq, Scanner(); sim_params=Dict{String,Any}(settings),
+                                 array_type=Array, verbose=false)
+            @test [profile.data for profile in signal.profiles] ==
+                  [profile.data for profile in reference.profiles]
+            @test settings == snapshot
+        end
+        @test_throws ArgumentError simulate(obj, seq, Scanner(); sim_params=Dict(:gpu => false),
+                                            array_type=Array, verbose=false)
+        @test_throws ArgumentError simulate(obj, seq, Scanner(); sim_params=(gpu=false,),
+                                            array_type=Array, verbose=false)
+    end
 end

@@ -73,6 +73,10 @@ end
 @functor HO_Phantom
 Base.show(io::IO, s::HO_Phantom) = begin
 	nSpin, nCoil = size(s.csm)
+	if isempty(s.x)
+		print(io, "HO_Phantom[$(s.name) | nCoil=$(nCoil) | nSpin=$(nSpin) | empty ]")
+		return nothing
+	end
 	x_min, x_max = round(minimum(s.x)*1e2, digits=2), round(maximum(s.x)*1e2, digits=2)
 	y_min, y_max = round(minimum(s.y)*1e2, digits=2), round(maximum(s.y)*1e2, digits=2)
 	z_min, z_max = round(minimum(s.z)*1e2, digits=2), round(maximum(s.z)*1e2, digits=2)
@@ -83,10 +87,26 @@ end
 size(x::HO_Phantom) = size(x.ρ)
 Base.length(x::HO_Phantom) = length(x.ρ)
 # To enable to iterate and broadcast over the HO_Phantom
-Base.iterate(x::HO_Phantom) = (x[1], 2)
+Base.iterate(x::HO_Phantom) = isempty(x.ρ) ? nothing : (x[1], 2)
 Base.iterate(x::HO_Phantom, i::Integer) = (i <= length(x)) ? (x[i], i+1) : nothing
 Base.lastindex(x::HO_Phantom) = length(x)
 Base.getindex(x::HO_Phantom, i::Integer) = x[i:i]
+
+# Validate storage before either backend indexes spin arrays. Do not inspect
+# values or change explicitly supplied receive sensitivities.
+function validate_phantom(obj::HO_Phantom)
+    nSpin = length(obj)
+    for name in (:x, :y, :z, :ρ, :T1, :T2, :T2s, :Δw, :Dλ1, :Dλ2, :Dθ)
+        values = getproperty(obj, name)
+        length(values) == nSpin ||
+            throw(DimensionMismatch("Phantom field $name must contain one value per spin."))
+        Base.require_one_based_indexing(values)
+    end
+    size(obj.csm, 1) == nSpin ||
+        throw(DimensionMismatch("The CSM must have one row per spin."))
+    Base.require_one_based_indexing(obj.csm)
+    return nothing
+end
 
 """Compare two phantoms"""
 Base.isapprox(obj1::HO_Phantom, obj2::HO_Phantom)  = begin
@@ -152,8 +172,20 @@ Base.view(obj::HO_Phantom, p::AbstractRange) = begin
 			)
 end
 
-"""Addition of phantoms"""
+"""
+Concatenate spins with the same receive-coil count and motion functions.
+Nonempty inputs must share each displacement function by identity; different
+motion models cannot be represented by one phantom without discarding motion.
+An empty input does not override the other input's motion.
+"""
 +(s1::HO_Phantom,s2::HO_Phantom) = begin
+	validate_phantom(s1)
+	validate_phantom(s2)
+	if !isempty(s1.ρ) && !isempty(s2.ρ)
+		all(getproperty(s1, name) === getproperty(s2, name) for name in (:ux, :uy, :uz)) ||
+			throw(ArgumentError("Cannot concatenate phantoms with different motion functions."))
+	end
+	motion = isempty(s1.ρ) ? s2 : s1
 	HO_Phantom(name=s1.name*"+"*s2.name,
 		x=[s1.x;s2.x],
 		y=[s1.y;s2.y],
@@ -168,9 +200,9 @@ end
 		Dλ2=[s1.Dλ2;s2.Dλ2],
 		Dθ=[s1.Dθ;s2.Dθ],
 		#Χ=obj.Χ[p], #TODO!
-		ux=s1.ux,
-		uy=s1.uy,
-		uz=s1.uz,
+		ux=motion.ux,
+		uy=motion.uy,
+		uz=motion.uz,
 		csm=[s1.csm;s2.csm]
 	)
 end

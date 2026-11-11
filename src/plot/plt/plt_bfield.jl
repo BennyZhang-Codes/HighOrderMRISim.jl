@@ -62,10 +62,7 @@ function plt_bfield(
         ax.set_facecolor(color_facecolor)
         ax.tick_params(axis="both", length=ticklength, width=linewidth, pad=pad_labeltick, 
             color=color_label, labelcolor=color_label, labelsize=fontsize_ticklabel)
-        for spine in ax.spines  # "left", "right", "bottom", "top"
-            # ax.spines[spine].set_linewidth(linewidth)
-            ax.spines[spine].set_visible(false)
-        end
+        hide_plot_spines!(ax)
     end
     
     term_ranges = (1:1, 2:4, 5:9, 10:16)
@@ -157,10 +154,7 @@ function plt_bfield_com(
         ax.set_facecolor(color_facecolor)
         ax.tick_params(axis="both", length=ticklength, width=linewidth, pad=pad_labeltick, 
             color=color_label, labelcolor=color_label, labelsize=fontsize_ticklabel)
-        for spine in ax.spines  # "left", "right", "bottom", "top"
-            # ax.spines[spine].set_linewidth(linewidth)
-            ax.spines[spine].set_visible(false)
-        end
+        hide_plot_spines!(ax)
     
         ax.plot(t, bfield1[:, term], linewidth=linewidth, label="bfield 1")
         ax.plot(t, bfield2[:, term], linewidth=linewidth, label="bfield 2")

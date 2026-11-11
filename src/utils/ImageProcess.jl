@@ -1,11 +1,23 @@
-# Normalization
-function normalization(img::AbstractArray{T,2}) where T<:Real
-    return (img.- minimum(img))./ (maximum(img) .- minimum(img))
+function check_image_values(img)
+    isempty(img) && throw(ArgumentError("An image must contain at least one value."))
+    all(isfinite, img) || throw(DomainError(img, "Image values must be finite."))
+    return nothing
 end
 
-# Standardization
+"""Min-max normalize a finite image; constant images map to floating-point zeros."""
+function normalization(img::AbstractArray{T,2}) where T<:Real
+    check_image_values(img)
+    lower, upper = extrema(img)
+    upper == lower && return zero.(float.(img))
+    return (img .- lower) ./ (upper - lower)
+end
+
+"""Standardize by population standard deviation; constant images map to zeros."""
 function standardization(img::AbstractArray{T,2}) where T<:Real
-    return (img.- mean(img))./ std(img; corrected=false)
+    check_image_values(img)
+    deviation = std(img; corrected=false)
+    iszero(deviation) && return zero.(float.(img))
+    return (img .- mean(img)) ./ deviation
 end
 
 """
@@ -60,34 +72,8 @@ julia> out = get_center_crop(img, 100, 100)
 function  get_center_crop(image::AbstractArray{T}, out_x::Int64, out_y::Int64) where T <: Number
     nDim = ndims(image)
     @assert nDim == 2 || nDim == 3 "Input array must be 2D or 3D"
-    @assert out_x > 0 && out_y > 0 "Output size must be positive"
-    
-    image = nDim == 2 ? reshape(image, size(image)..., 1) : image
-    Nx = out_x
-    Ny = out_y
-    
-    M, N, K = size(image)
-    out = zeros(T, Nx, Ny, K)
-
-    if Nx < M && Ny < N
-        rangex = get_center_range(M, Nx)
-        rangey = get_center_range(N, Ny)
-        out = image[rangex, rangey, :]
-    elseif Nx > M && Ny > N
-        rangex = get_center_range(Nx, M)
-        rangey = get_center_range(Ny, N)
-        out[rangex, rangey, :] = image
-    elseif Nx < M && Ny > N
-        rangex = get_center_range(M, Nx)
-        rangey = get_center_range(Ny, N)
-        out[:, rangey, :] = image[rangex, :, :]
-    elseif Nx > M && Ny < N
-        rangex = get_center_range(Nx, M)
-        rangey = get_center_range(N, Ny)
-        out[rangex, :, :] = image[:, rangey, :]
-    end
-    out = nDim == 2 ?  out[:,:,1] : out
-    return out
+    out = get_center_crop(image, out_x, out_y, size(image, 3))
+    return nDim == 2 ? dropdims(out; dims=3) : out
 end
 
 

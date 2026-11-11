@@ -22,3 +22,24 @@ using HighOrderMRISim
     @test size(padded3d) == (120, 120, 10)
 end
 
+@testset "Center crop preserves values on equal axes" begin
+    for T in (Float32, Float64, ComplexF32, ComplexF64)
+        image = reshape(T.(1:20), 4, 5)
+        @test get_center_crop(image, 4, 5) == image
+        @test get_center_crop(image, 2, 5) == image[2:3, :]
+        @test get_center_crop(image, 4, 3) == image[:, 2:4]
+        padded = get_center_crop(image, 6, 5)
+        @test padded[2:5, :] == image
+        @test iszero(padded[[1, 6], :])
+        padded = get_center_crop(image, 4, 7)
+        @test padded[:, 2:6] == image
+        @test iszero(padded[:, [1, 7]])
+        volume = cat(image, 2image; dims=3)
+        @test get_center_crop(volume, 4, 5) == volume
+        @test get_center_crop(volume, 2, 5) == volume[2:3, :, :]
+        @test get_center_crop(volume, 4, 3) == volume[:, 2:4, :]
+        @test get_center_crop(volume, 4, 5, 2) == volume
+        @test get_center_crop(image, 4, 5, 1) == reshape(image, 4, 5, 1)
+    end
+end
+

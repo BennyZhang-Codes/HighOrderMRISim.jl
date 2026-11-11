@@ -6,6 +6,8 @@ isdefined(@__MODULE__, :compatibility_sequence) ||
     include(joinpath(@__DIR__, "..", "support", "compatibility_workload.jl"))
 
 @testset "KomaMRI compatibility" begin
+    @test HighOrderMRISim.__VERSION__ == pkgversion(HighOrderMRISim)
+
     @testset "Parameterized Grad inputs and high-order-only sampling" begin
         gradients = reshape([Grad(Float64(i), 1e-3) for i in 1:4], :, 1)
         hoseq = HO_Sequence(gradients)

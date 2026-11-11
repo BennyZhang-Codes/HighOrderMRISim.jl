@@ -1,7 +1,7 @@
 name = "HighOrderMRISim"
 uuid = "6437142c-3aa9-4303-9277-bb0012cca490"
 authors = ["Jinyuan Zhang <823573476@qq.com>"]
-version = "0.2.1"
+version = "0.2.2"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
@@ -29,12 +29,27 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 ThreadsX = "ac1d9e8a-700a-412c-b207-f0111f4b6c0d"
 
 [compat]
+CUDA = "6.4"
+Functors = "0.5"
+ImageDistances = "0.2"
+ImageMorphology = "0.4"
+ImageQualityIndexes = "0.3"
+ImageTransformations = "0.10"
+Interpolations = "0.16"
 KomaMRI = "0.15"
 KomaMRIBase = "0.15.2"
 KomaMRICore = "0.14"
 KomaMRIFiles = "0.12"
 KomaMRIPlots = "0.14"
 KernelAbstractions = "0.9.45"
+MAT = "0.12"
+MRIBase = "0.4"
+Parameters = "0.12"
+ProgressMeter = "1"
+PyPlot = "2.11"
+Reexport = "1"
+Statistics = "1"
+ThreadsX = "0.1"
 julia = "1.12"
 
 [extras]

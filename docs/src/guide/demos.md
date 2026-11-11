@@ -20,6 +20,22 @@ CUDA coil-signal and CSM stride fixes. HighOrderMRI and its `MRIGeometry`
 subpackage remain at the validated commit `245e430`. The pinned dependencies
 use public HTTPS repositories.
 
+### Validate the current checkout instead
+
+The pinned environment reproduces the release; it does **not** test uncommitted
+or newer source in the current checkout. To validate that source without changing
+the committed demo lockfile, create a separate environment from the repository root:
+
+```bash
+julia --startup-file=no demo/instantiate_checkout.jl local/demo-checkout
+```
+
+The destination must be new or empty. Omitting it creates a temporary directory
+and prints its path. Run the commands below with `--project=local/demo-checkout`
+instead of `--project=demo`. This keeps the validated reconstruction commit while loading
+HighOrderMRISim from the repository root. Reuse the same isolated depot and
+Python setup; the default Julia project remains untouched.
+
 ## Run simulation and reconstruction
 
 Both stages default to `gpus = [0]`. Change `gpus` in the corresponding script
@@ -91,3 +107,9 @@ The reconstruction MAT file contains `image`, `rho`, `mode`, and `metrics`.
 Compare runs with the same mode, grid, field-order mask, and reconstruction
 settings. These results validate the bundled workflows under the stated
 conditions; they do not establish physical accuracy on an independent scanner.
+
+These metrics come from HighOrderMRI: magnitude NRMSE uses a reference-norm
+denominator, with no fitted scaling by default. The legacy `HO_NRMSE` helper in
+HighOrderMRISim uses reference magnitude range and defaults to fitted intensity
+scaling. Its numerical value must not be compared directly with the table above.
+It rejects constant-magnitude references because that range denominator is zero.

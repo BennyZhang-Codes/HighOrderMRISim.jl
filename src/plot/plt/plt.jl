@@ -1,5 +1,12 @@
 using PyPlot
 
+function hide_plot_spines!(ax)
+    for spine in ax.spines.values()
+        spine.set_visible(false)
+    end
+    return nothing
+end
+
 include("plt_plot.jl")
 export plt_plot
 

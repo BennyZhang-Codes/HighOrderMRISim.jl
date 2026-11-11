@@ -58,6 +58,16 @@ function plt_phantom(
     pad_labeltick      = 2          ,
     markersize         = 4          ,
     )
+    validate_phantom(ph)
+    isempty(ph.ρ) && throw(ArgumentError("Cannot plot an empty phantom."))
+    key in (:x, :y, :z, :ρ, :T1, :T2, :T2s, :Δw, :Dλ1, :Dλ2, :Dθ,
+            :csm_mag, :csm_pha, :csm_real, :csm_imag) ||
+        throw(ArgumentError("Unsupported phantom property: $key."))
+    if key in (:csm_mag, :csm_pha, :csm_real, :csm_imag)
+        coil_idx isa Integer && 1 <= coil_idx <= size(ph.csm, 2) ||
+            throw(ArgumentError("coil_idx must identify an available receive coil."))
+    end
+    isfinite(t0) || throw(ArgumentError("The display time must be finite."))
     colors = PyPlot.matplotlib.colors
     ListedColormap = colors.ListedColormap
     if key == :csm_mag
@@ -139,10 +149,7 @@ function plt_phantom(
         ax.set_facecolor(color_facecolor)
         ax.tick_params(axis="both", length=ticklength, width=linewidth, pad=pad_labeltick, 
             color=color_label, labelcolor=color_label, labelsize=fontsize_ticklabel)
-        for spine in ax.spines  # "left", "right", "bottom", "top"
-            # ax.spines[spine].set_linewidth(linewidth)
-            ax.spines[spine].set_visible(false)
-        end
+        hide_plot_spines!(ax)
         ax.set_xlim(x0,xf)
         ax.set_ylim(x0,xf)
         

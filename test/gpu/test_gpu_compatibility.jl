@@ -58,6 +58,70 @@ end
     end
 end
 
+@testset "CUDA phantom default receive coil" begin
+    @testset "$T" for T in (Float32, Float64)
+        tolerance = T === Float32 ? 3e-5 : 1e-11
+        for (label, inputs) in (
+            ("defaults", (; x=T[0, 0.01, -0.02])),
+            ("pure density", (; x=T[0, 0.01, -0.02], ρ=T[1, 0.7, 0.3],
+                               T1=fill(T(Inf), 3), T2=fill(T(Inf), 3))),
+        ), constructor in (HO_Phantom, HO_Phantom{T})
+            @testset "$label / $constructor" begin
+                implicit = constructor(; inputs...)
+                explicit = constructor(; inputs..., csm=ones(Complex{T}, 3, 1))
+                density = copy(implicit.ρ)
+                hoseq = HO_Sequence(compatibility_sequence())
+                if label == "defaults"
+                    for term in 1:16
+                        hoseq.GR_dfc[term, 2] = Grad(term * 1e-7, 1e-3)
+                    end
+                end
+                params = Dict{String,Any}(
+                    "precision" => T === Float32 ? "f32" : "f64",
+                    "Nthreads" => 1, "sim_method" => BlochHighOrder("1111"),
+                    "return_type" => "mat", "max_block_length" => 2,
+                    "max_rf_block_length" => 1,
+                )
+                reference = simulate(explicit, hoseq, Scanner(); sim_params=params,
+                                     array_type=Array, verbose=false)
+                for (implementation, coil_combination) in (("array", "gemm"),
+                    (("kernel", mode) for mode in HighOrderMRISim.HIGH_ORDER_COIL_COMBINATIONS)...)
+                    @testset "$implementation / $coil_combination" begin
+                        gpu_blocks = Ref(0)
+                        callback = function (_, _, data, actual)
+                            @test actual["gpu"]
+                            @test actual["implementation"] == implementation
+                            @test data.obj.csm isa CUDA.CuArray
+                            @test eltype(data.obj.csm) == Complex{T}
+                            @test size(data.obj.csm) == (3, 1)
+                            gpu_blocks[] += 1
+                            return nothing
+                        end
+                        gpu_params = merge(params, Dict("implementation" => implementation,
+                                                       "coil_combination" => coil_combination))
+                        signal = simulate(implicit, hoseq, Scanner(); sim_params=gpu_params,
+                            array_type=CUDA.CuArray, gpus=[0], callbacks=(callback,), verbose=false)
+                        explicit_signal = simulate(explicit, hoseq, Scanner(); sim_params=gpu_params,
+                            array_type=CUDA.CuArray, gpus=[0], verbose=false)
+                        @test gpu_blocks[] > 0
+                        @test eltype(signal) == Complex{T}
+                        @test size(signal) == (5, 1, 1)
+                        @test all(isfinite, signal)
+                        @test signal ≈ reference atol=tolerance rtol=tolerance
+                        @test signal ≈ explicit_signal atol=tolerance rtol=tolerance
+                        if label == "pure density"
+                            @test all(isapprox.(abs.(signal), sum(density); rtol=tolerance))
+                        end
+                        @test implicit.ρ == density
+                        @test implicit.csm == ones(Complex{T}, 3, 1)
+                        @test explicit.csm == ones(Complex{T}, 3, 1)
+                    end
+                end
+            end
+        end
+    end
+end
+
 @testset "CUDA high-order compatibility" begin
     for precision in ("f32", "f64"), orders in ("0000", "1000", "1111"),
         coil_combination in HighOrderMRISim.HIGH_ORDER_COIL_COMBINATIONS

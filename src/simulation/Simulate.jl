@@ -71,7 +71,9 @@ function setup_simulation(
     obj, hoseq, sys; sim_params=Dict{String,Any}(),
     array_type=nothing, gpus=nothing, verbose=false,
 )
-    params = KomaMRICore.default_sim_params(copy(sim_params))
+    sim_params isa AbstractDict && all(key -> key isa AbstractString, keys(sim_params)) ||
+        throw(ArgumentError("sim_params must be a dictionary with string keys."))
+    params = KomaMRICore.default_sim_params(Dict{String,Any}(sim_params))
     get(params, "synchronization", "auto") in ("auto", "block") ||
         throw(ArgumentError("synchronization must be auto or block."))
     sim_method = params["sim_method"]
@@ -89,12 +91,12 @@ function setup_simulation(
         throw(ArgumentError("The legacy high-order path supports f32 and f64 precision."))
     params["Nthreads"] isa Integer && params["Nthreads"] > 0 ||
         throw(ArgumentError("Nthreads must be a positive integer."))
+    validate_phantom(obj)
     isempty(obj.ρ) && throw(ArgumentError("The phantom must contain at least one spin."))
     if sim_method isa BlochHighOrder
-        size(obj.csm, 1) == length(obj) ||
-            throw(DimensionMismatch("The CSM must have one row per spin."))
         size(obj.csm, 2) > 0 || throw(ArgumentError("The CSM must contain at least one coil."))
     end
+    validate_high_order_sequence(hoseq)
     devices = set_simulation_devices!(params, array_type, gpus, length(obj))
 
     hoseqd = discretize(hoseq; sampling_params=params)

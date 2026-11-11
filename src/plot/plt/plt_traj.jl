@@ -78,9 +78,7 @@ function plt_traj(
     ax.set_facecolor(color_facecolor)
     ax.tick_params(axis="both", length=ticklength, width=linewidth, pad=pad_labeltick, 
         color=color_label, labelcolor=color_label, labelsize=fontsize_ticklabel)
-    for spine in ax.spines  # "left", "right", "bottom", "top"
-        ax.spines[spine].set_visible(false)
-    end
+    hide_plot_spines!(ax)
     ax.scatter((ktraj[:, i] for i in axes)...; linewidths=linewidth,
         marker=".", s=markersize, c=collect(1:nPoint), cmap=cmap)
 
@@ -135,11 +133,7 @@ function plt_traj(
     ax.set_facecolor(color_facecolor)
     ax.tick_params(axis="both", length=ticklength, width=linewidth, pad=pad_labeltick, 
         color=color_label, labelcolor=color_label, labelsize=fontsize_ticklabel)
-    for spine in ax.spines  # "left", "right", "bottom", "top"
-        # ax.spines[spine].set_color(color_label)
-        # ax.spines[spine].set_linewidth(linewidth)
-        ax.spines[spine].set_visible(false)
-    end
+    hide_plot_spines!(ax)
 
     for (traj, label) in zip(trajs, labels)
         ax.plot((traj[:, i] for i in axes)...; label, linewidth)

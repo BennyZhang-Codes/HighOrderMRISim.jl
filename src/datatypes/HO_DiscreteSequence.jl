@@ -138,6 +138,7 @@ function discretize(
     sampling_rule=nothing,
     freq_in_phase=get(sampling_params, "freq_in_phase", false),
 )::HO_DiscreteSequence
+    validate_high_order_sequence(hoseq)
     rule = isnothing(sampling_rule) ? high_order_sampling_rule(sampling_params) : sampling_rule
     seq = simulation_sequence(hoseq)
     starts = get_block_start_times(seq)

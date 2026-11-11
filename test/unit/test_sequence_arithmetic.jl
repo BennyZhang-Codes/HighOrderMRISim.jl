@@ -21,6 +21,20 @@ isdefined(@__MODULE__, :compatibility_sequence) ||
         y = T(1.5) * x
         original_x, original_y = deepcopy(x), deepcopy(y)
 
+        @testset "Complex RF scaling and empty iteration" begin
+            α = Complex{T}(0.5, -0.25)
+            for scaled in (α * x, x * α)
+                @test scaled.SEQ ≈ α * x.SEQ
+                @test all(isapprox.(scaled.GR_dfc, x.GR_dfc))
+                @test scaled.DUR == x.DUR
+            end
+            empty = HO_Sequence(seq[1:0])
+            @test length(empty) == 0
+            @test iterate(empty) === nothing
+            @test isempty(collect(empty))
+            @test size(empty) == (0,)
+        end
+
         @testset "Subtraction preserves native concatenation semantics" begin
             actual, expected = x - y, x + (-y)
             @test actual.SEQ ≈ x.SEQ - y.SEQ

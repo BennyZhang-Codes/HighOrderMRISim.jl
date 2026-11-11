@@ -1,6 +1,8 @@
 # Getting Started
 
-Use Julia 1.12 and Python 3.12 with `venv` and a shared `libpython` for PyPlot.
+Use Julia 1.12. The isolated setup below uses Python 3.12 with `venv` and a
+shared `libpython` for PyPlot; an existing working PyPlot/Python setup can also
+be reused.
 The example below runs on CPU and does not need an external dataset. For the
 full simulation-to-reconstruction workflow, use the separate environment in
 [2D and 3D Demos](@ref).
@@ -20,6 +22,10 @@ export JULIA_DEPOT_PATH="$PWD/local/demo-depot:" JULIA_LOAD_PATH='@:@stdlib'
 julia --startup-file=no --project=. -e 'using Pkg; Pkg.instantiate()'
 julia --startup-file=no --project=.
 ```
+
+If reusing a depot after changing Python, rebuild its PyCall binding with
+`julia --startup-file=no --project=. -e 'using Pkg; Pkg.build("PyCall")'`.
+Run this only in the isolated depot selected above, not in a shared default depot.
 
 ## Simulate a small CPU example
 
@@ -45,7 +51,6 @@ obj = HO_Phantom(
     ρ = [1.0, 0.7],
     T1 = [Inf, Inf],
     T2 = [Inf, Inf],
-    csm = ones(ComplexF64, 2, 1),
 )
 
 scanner = Scanner()
@@ -77,3 +82,6 @@ signal_gpu = simulate(obj, hoseq, scanner; sim_params, array_type=CuArray, gpus=
 
 Use `gpus=[0, 1]` to distribute simulation across two visible devices. See
 [High-Order Simulation](@ref) for backend selection and prepared execution.
+
+See [Plotting and Field Inspection](@ref) to inspect nominal gradients, attached
+fields, encoding trajectories, and phantom properties before a larger simulation.
