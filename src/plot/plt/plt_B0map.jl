@@ -54,9 +54,7 @@ function plt_B0map(
     ax.set_title(title, fontsize=fontsize_label, color=color_label)
     ax.set_facecolor(color_facecolor)
     ax.tick_params(axis="both", bottom=false, top=false, left=false, right=false, labelbottom=false, labeltop=false, labelleft=false, labelright=false)
-    for spine in ax.spines  # "left", "right", "bottom", "top"
-        ax.spines[spine].set_visible(false)
-    end
+    hide_plot_spines!(ax)
 
     ai = ax.imshow(b0map, cmap=cmap, vmin=vmin, vmax=vmax)
 

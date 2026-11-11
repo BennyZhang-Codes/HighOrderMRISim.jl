@@ -8,7 +8,7 @@ abstract type PhantomType end
 
 The BrainPhantom. It contains parameters for selecting the Brain3D phantoms.
 
-default: `brain3D_0.2_0.2_0.2.mat`.
+default: `brain3D_0.5_0.5_0.5.mat`. Voxel sizes `x`, `y`, and `z` are in millimeters.
 
 # Arguments
 - `prefix::String`: prefix of the Brain3D phantom.

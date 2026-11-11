@@ -2,12 +2,11 @@ import KomaMRIBase: get_samples, get_grads, get_kspace
 import KomaMRIBase: is_Gx_on, is_Gy_on, is_Gz_on, is_ADC_on, is_RF_on
 """
     hoseq = HO_Sequence()
-    hoseq = HO_Sequence(GR_dfc::Array{Grad,2})
-    hoseq = HO_Sequence(SEQ::Sequence, GR_dfc::Array{Grad,2})
+    hoseq = HO_Sequence(GR_dfc::AbstractMatrix{<:Grad})
+    hoseq = HO_Sequence(SEQ::Sequence, GR_dfc::AbstractMatrix{<:Grad})
 	hoseq = HO_Sequence(SEQ::Sequence)
-	hoseq = HO_Sequence(GR_dfc::Array{Grad,2}, SEQ::Sequence)
-	hoseq = HO_Sequence(GR_dfc::Array{Grad,1})
-	hoseq = HO_Sequence(SEQ::Sequence, GR_dfc::Array{Grad,1}, DUR)
+	hoseq = HO_Sequence(GR_dfc::AbstractVector{<:Grad})
+	hoseq = HO_Sequence(SEQ::Sequence, GR_dfc::AbstractVector{<:Grad}, DUR::Real)
 
 # Description
 	The HO_Sequence struct. It contains MRI sequence and corresponding DFC measured gradients.
@@ -83,7 +82,7 @@ HO_Sequence() = HO_Sequence([Grad(0, 0)])
 
 #Sequence operations
 Base.length(x::HO_Sequence) = length(x.DUR)
-Base.iterate(x::HO_Sequence) = (HO_Sequence(x.SEQ[1], x.GR_dfc[:,1], x.DUR[1]), 2)
+Base.iterate(x::HO_Sequence) = isempty(x.DUR) ? nothing : (HO_Sequence(x.SEQ[1], x.GR_dfc[:,1], x.DUR[1]), 2)
 Base.iterate(x::HO_Sequence, i::Integer) = (i <= length(x)) ? (HO_Sequence(x.SEQ[i], x.GR_dfc[:,i], x.DUR[i]), i+1) : nothing
 Base.getindex(x::HO_Sequence, i::UnitRange{Int}) = HO_Sequence(x.SEQ[i], x.GR_dfc[:,i], x.DUR[i])
 Base.getindex(x::HO_Sequence, i::Int) = HO_Sequence(x.SEQ[i], x.GR_dfc[:,i], x.DUR[i])
@@ -99,12 +98,23 @@ Base.lastindex(x::HO_Sequence) = length(x.DUR)
 -(x::HO_Sequence) = HO_Sequence(-x.SEQ, -x.GR_dfc, x.DUR)
 *(x::HO_Sequence, α::Real) = HO_Sequence(α*x.SEQ, α*x.GR_dfc, x.DUR)
 *(α::Real, x::HO_Sequence) = HO_Sequence(α*x.SEQ, α*x.GR_dfc, x.DUR)
-*(x::HO_Sequence, α::ComplexF64) = HO_Sequence(α*x.SEQ, x.GR_dfc, x.DUR)
-*(α::ComplexF64, x::HO_Sequence) = HO_Sequence(α*x.SEQ, x.GR_dfc, x.DUR)
+*(x::HO_Sequence, α::Complex) = HO_Sequence(α*x.SEQ, x.GR_dfc, x.DUR)
+*(α::Complex, x::HO_Sequence) = HO_Sequence(α*x.SEQ, x.GR_dfc, x.DUR)
 /(x::HO_Sequence, α::Real) = HO_Sequence(x.SEQ/α, x.GR_dfc/α, x.DUR)
 
 #Sequence object functions
-size(x::HO_Sequence) = size(x.GR_dfc[1,:])
+size(x::HO_Sequence) = (size(x.GR_dfc, 2),)
+
+function validate_high_order_sequence(hoseq::HO_Sequence)
+    nBlock = length(hoseq.SEQ)
+    size(hoseq.GR_dfc) == (16, nBlock) ||
+        throw(DimensionMismatch("Expected 16 field channels and one column per sequence block."))
+    length(hoseq.DUR) == nBlock ||
+        throw(DimensionMismatch("Expected one duration per sequence block."))
+    size(hoseq.SEQ.RF, 1) == 1 ||
+        throw(ArgumentError("High-order sampling supports a single transmit RF channel."))
+    return nothing
+end
 
 # Event amplitudes may be edited after construction. Reconcile durations before sampling
 # without mutating the caller's native sequence or its Pulseq extensions.
@@ -152,8 +162,8 @@ end
 - `max_rf_samples`: (`::Integer`, `=Inf`) maximum number of samples for the RF struct
 
 # Returns
-- `samples`: (`::NamedTuple`) contains samples for `h0`, `h1`, `h2`, `h3`, `h4`, `h5`, `h6`,
-    `h7`, `h8`, `gx`, `gy`, `gz`, `rf`, and `adc` events. Each event, represented by 
+- `samples`: (`::NamedTuple`) contains samples for `h0` through `h15`,
+    `gx`, `gy`, `gz`, `rf`, and `adc` events. Each event, represented by
 	`e::NamedTuple`, includes time samples (`e.t`) and amplitude samples (`e.A`)
 """
 function get_samples(hoseq::HO_Sequence; off_val=0, max_rf_samples=Inf)

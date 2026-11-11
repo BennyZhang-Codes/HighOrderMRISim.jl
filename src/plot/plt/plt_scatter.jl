@@ -61,9 +61,7 @@ function plt_scatter(
     ax.set_facecolor(color_facecolor)
     ax.tick_params(axis="both", length=ticklength, width=linewidth, pad=pad_labeltick, 
         color=color_label, labelcolor=color_label, labelsize=fontsize_ticklabel)
-    for spine in ax.spines  # "left", "right", "bottom", "top"
-        ax.spines[spine].set_visible(false)
-    end
+    hide_plot_spines!(ax)
     if isnothing(labels)
         labels = ["" for i=1:length(ys)]
     elseif length(labels) < length(ys)

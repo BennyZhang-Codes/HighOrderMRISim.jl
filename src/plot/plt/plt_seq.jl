@@ -58,10 +58,7 @@ function plt_seq(
     ax.set_facecolor(color_facecolor)
     ax.tick_params(axis="both", length=ticklength, width=linewidth, pad=pad_labeltick, 
         color=color_label, labelcolor=color_label, labelsize=fontsize_ticklabel)
-    for spine in ax.spines  # "left", "right", "bottom", "top"
-        # ax.spines[spine].set_linewidth(linewidth)
-        ax.spines[spine].set_visible(false)
-    end
+    hide_plot_spines!(ax)
 
     # For GRADs
     ax.plot(samples.gx.t*1e3, samples.gx.A*1e3, label="Gx nominal [mT/m]", color="#636EFA", linewidth=linewidth)

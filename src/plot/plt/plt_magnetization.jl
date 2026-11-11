@@ -58,6 +58,8 @@ function plt_magnetization(
     pad_labeltick      = 2          ,
     markersize         = 4          ,
     )
+    validate_phantom(ph)
+    isempty(ph.ρ) && throw(ArgumentError("Cannot plot magnetization for an empty phantom."))
     @assert key in [:xy_mag, :xy_pha, :xy_real, :xy_imag, :z] "key must be :xy_mag, :xy_pha, :xy_real, xy_imag, or :z"
     @assert size(mag.xy, 1) == size(mag.z, 1) == size(ph.x, 1) "Mag and Phantom must have the same number of spins."
 
@@ -92,10 +94,7 @@ function plt_magnetization(
         ax.set_facecolor(color_facecolor)
         ax.tick_params(axis="both", length=ticklength, width=linewidth, pad=pad_labeltick, 
             color=color_label, labelcolor=color_label, labelsize=fontsize_ticklabel)
-        for spine in ax.spines  # "left", "right", "bottom", "top"
-            # ax.spines[spine].set_linewidth(linewidth)
-            ax.spines[spine].set_visible(false)
-        end
+        hide_plot_spines!(ax)
         ax.set_xlim(x0,xf)
         ax.set_ylim(x0,xf)
         

@@ -1,5 +1,8 @@
 """
-    BHO = BlochHighOrder(ho0, ho1, ho2, ho3, Δw_excitation, Δw_precession)
+    BHO = BlochHighOrder(mask::String)
+    BHO = BlochHighOrder(mask::String, Δw_excitation::Bool, Δw_precession::Bool)
+    BHO = BlochHighOrder(; ho0=true, ho1=true, ho2=true, ho3=true,
+                         Δw_excitation=true, Δw_precession=true)
 
 A simulation method for dynamic fields through third spatial order. High-order
 fields affect free precession; RF excitation retains the nominal-gradient model.
@@ -23,30 +26,20 @@ Base.@kwdef struct BlochHighOrder <: SimulationMethod
     Δw_excitation::Bool = true
     Δw_precession::Bool = true
     name::String = string(Int(ho0)) * string(Int(ho1)) * string(Int(ho2)) * string(Int(ho3))
+    function BlochHighOrder(ho0, ho1, ho2, ho3, Δw_excitation, Δw_precession, name)
+        expected = join(string(Int(Bool(flag))) for flag in (ho0, ho1, ho2, ho3))
+        name == expected || throw(ArgumentError("The field-order name must match ho0 through ho3."))
+        return new(ho0, ho1, ho2, ho3, Δw_excitation, Δw_precession, name)
+    end
 end
 
-function BlochHighOrder(name::String)
-    @assert name == "0000" || name == "1000" || name == "0100" || name == "0010" || name == "0001" ||
-    name == "1100" || name == "1001" || name == "0011" || name == "1010" || name == "0110" || name == "0101" ||
-    name == "1110" || name == "1101" || name == "1011" || name == "0111" ||
-    name == "1111" "Invalid name for BlochHighOrder simulation method. Valid names are: 0000, 1000, 0100, 0010, 0001, 1100, 1001, 0011, 1010, 0110, 0101, 1110, 1101, 1011, 0111, 1111"
-    ho0 = Bool(parse(Int64, name[1]))
-    ho1 = Bool(parse(Int64, name[2]))
-    ho2 = Bool(parse(Int64, name[3]))
-    ho3 = Bool(parse(Int64, name[4]))
-    return BlochHighOrder(ho0=ho0, ho1=ho1, ho2=ho2, ho3=ho3)
-end
+BlochHighOrder(name::String) = BlochHighOrder(name, true, true)
 
 function BlochHighOrder(name::String, Δw_excitation::Bool, Δw_precession::Bool)
-    @assert name == "0000" || name == "1000" || name == "0100" || name == "0010" || name == "0001" ||
-    name == "1100" || name == "1001" || name == "0011" || name == "1010" || name == "0110" || name == "0101" ||
-    name == "1110" || name == "1101" || name == "1011" || name == "0111" ||
-    name == "1111" "Invalid name for BlochHighOrder simulation method. Valid names are: 0000, 1000, 0100, 0010, 0001, 1100, 1001, 0011, 1010, 0110, 0101, 1110, 1101, 1011, 0111, 1111"
-    ho0 = Bool(parse(Int64, name[1]))
-    ho1 = Bool(parse(Int64, name[2]))
-    ho2 = Bool(parse(Int64, name[3]))
-    ho3 = Bool(parse(Int64, name[4]))
-    return BlochHighOrder(ho0=ho0, ho1=ho1, ho2=ho2, ho3=ho3, Δw_excitation=Δw_excitation, Δw_precession=Δw_precession)
+    ncodeunits(name) == 4 && all(flag -> flag in ('0', '1'), name) ||
+        throw(ArgumentError("The field-order mask must contain four binary digits, from order zero to three."))
+    flags = Tuple(flag == '1' for flag in name)
+    return BlochHighOrder(flags..., Δw_excitation, Δw_precession, name)
 end
 
 Base.show(io::IO, b::BlochHighOrder) = begin
