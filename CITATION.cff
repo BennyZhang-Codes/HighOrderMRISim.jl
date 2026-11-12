@@ -7,8 +7,8 @@ message: >-
 authors:
   - family-names: Zhang
     given-names: Jinyuan
-version: "0.2.1"
-date-released: "2026-11-10"
+version: "0.2.3"
+date-released: "2026-11-12"
 repository-code: "https://github.com/BennyZhang-Codes/HighOrderMRISim.jl"
 preferred-citation:
   type: article
