@@ -17,8 +17,8 @@
 - `fontsize_label`: (`::Real`, `=7`) font size of labels
 - `fontsize_legend`: (`::Real`, `=7`) font size of legend
 - `fontsize_ticklabel`: (`::Real`, `=6`) font size of tick labels
-- `color_facecolor`: (`::String`, `="#1F1F1F"`) background color of the figure  
-- `color_label`: (`::String`, `="#CCCCCC"`) color of labels and tick labels
+- `color_facecolor`: (`::String`, `="#ffffff"`) background color of the figure
+- `color_label`: (`::String`, `="#000000"`) color of labels and tick labels
 - `linewidth`: (`::Real`, `=0.5`) line width
 - `ticklength`: (`::Real`, `=1.5`) length of ticks
 - `pad_label`: (`::Real`, `=2`) padding between labels and tick labels
@@ -42,8 +42,8 @@ function plt_kspha(
     fontsize_label     = 7             ,
     fontsize_legend    = 7             ,
     fontsize_ticklabel = 6             ,
-    color_facecolor    = "#1F1F1F"     ,
-    color_label        = "#CCCCCC"     ,
+    color_facecolor    = "#ffffff"     ,
+    color_label        = "#000000"     ,
     linewidth          = 0.5           ,
     ticklength         = 1.5           ,
     pad_label          = 2             ,
@@ -135,8 +135,8 @@ end
 - `fontsize_label`: (`::Real`, `=7`) font size of labels
 - `fontsize_legend`: (`::Real`, `=7`) font size of legend
 - `fontsize_ticklabel`: (`::Real`, `=6`) font size of tick labels
-- `color_facecolor`: (`::String`, `="#1F1F1F"`) background color of the figure  
-- `color_label`: (`::String`, `="#CCCCCC"`) color of labels and tick labels
+- `color_facecolor`: (`::String`, `="#ffffff"`) background color of the figure
+- `color_label`: (`::String`, `="#000000"`) color of labels and tick labels
 - `linewidth`: (`::Real`, `=0.5`) line width
 - `ticklength`: (`::Real`, `=1.5`) length of ticks
 - `pad_label`: (`::Real`, `=2`) padding between labels and tick labels
@@ -161,8 +161,8 @@ function plt_ksphas(
     fontsize_label     = 7             ,
     fontsize_legend    = 7             ,
     fontsize_ticklabel = 6             ,
-    color_facecolor    = "#1F1F1F"     ,
-    color_label        = "#CCCCCC"     ,
+    color_facecolor    = "#ffffff"     ,
+    color_label        = "#000000"     ,
     linewidth          = 0.5           ,
     ticklength         = 1.5           ,
     pad_label          = 2             ,

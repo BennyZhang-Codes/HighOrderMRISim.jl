@@ -49,6 +49,7 @@ function plt_image(
     isnothing(vmin) && (vmin = quantile(vec(img), vminp/100))
 
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(width/2.53999863, (nY/nX)*height/2.53999863), facecolor=color_facecolor)
+    ax.set_facecolor(color_facecolor)
     ax.set_title(title, fontsize=fontsize_title, color=color_label)
     ax.imshow(img, cmap=cmap, vmin=vmin, vmax=vmax)
     ax.axis("off")
@@ -122,6 +123,9 @@ function plt_images(
 	axs = reshape(axs, nRow, nCol) # to keep axs as a 2D array
     
     fig.suptitle(title, fontsize=fontsize_title, color=color_label)
+    for ax in axs
+        ax.set_facecolor(color_facecolor)
+    end
     for frame = 1:nFrame
         row, col = Int(ceil(frame/nCol)), (frame-1)%nCol + 1
         ax = axs[row, col]

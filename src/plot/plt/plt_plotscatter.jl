@@ -1,5 +1,5 @@
 """
-    fig = plt_plot(ys::Vector{AbstractArray{Float64}}; labels=nothing, xs=nothing, xlabel="", ylabel="", width=15, height=8, fontsize_label=7, fontsize_legend=7, fontsize_ticklabel=6, color_facecolor="#1F1F1F", color_label="#CCCCCC", linewidth=0.5, ticklength=1.5, pad_label=2, pad_labeltick=2)
+    fig = plt_plot(ys::Vector{AbstractArray{Float64}}; labels=nothing, xs=nothing, xlabel="", ylabel="", width=15, height=8, fontsize_label=7, fontsize_legend=7, fontsize_ticklabel=6, color_facecolor="#ffffff", color_label="#000000", linewidth=0.5, ticklength=1.5, pad_label=2, pad_labeltick=2)
 
 # Description
     Plots multiple curves on the same figure.
@@ -45,8 +45,8 @@ function plt_plotscatter(
     fontsize_label     = 7        ,
     fontsize_legend    = 7        ,
     fontsize_ticklabel = 6        ,
-    color_facecolor    = "#1F1F1F",
-    color_label        = "#CCCCCC",
+    color_facecolor    = "#ffffff",
+    color_label        = "#000000",
     linewidth          = 0.5      ,
     ticklength         = 1.5      ,
     pad_label          = 2        ,

@@ -10,7 +10,7 @@ import PyPlot
         original = copy(values)
         times = T[0, 2e-4, 7e-4]
         for (plot, units) in ((plt_bfield, :T), (plt_kspha, :cycles))
-            fig = plot(values, 1e-4; units, times)
+            fig = plot(values, T(1e-4); units, times)
             try
                 axes = collect(fig.axes)
                 @test length(axes) == (nTerm == 9 ? 3 : 4)
@@ -32,7 +32,7 @@ import PyPlot
             end
         end
 
-        fig = plt_bfield_com(values, -values, 1e-4; units=:T, times)
+        fig = plt_bfield_com(values, -values, T(1e-4); units=:T, times)
         try
             axes = collect(fig.axes)
             @test length(axes) == nTerm
@@ -45,6 +45,23 @@ import PyPlot
             end
             @test occursin(nTerm == 9 ? "T/m²" : "T/m³", axes[end].get_ylabel())
             fig.canvas.draw()
+        finally
+            PyPlot.close(fig)
+        end
+    end
+
+    # Real demo files may store dt as Float32. Both field plotters must accept
+    # that interval without converting the coefficient values.
+    for T in (Float32, Float64), comparison in (false, true)
+        values = reshape(T.(1:48), 3, 16)
+        original = copy(values)
+        dt = T(1e-4)
+        fig = comparison ? plt_bfield_com(values, -values, dt) : plt_bfield(values, dt)
+        try
+            line = first(first(fig.axes).get_lines())
+            @test collect(line.get_xdata()) == (1:3) .* dt .* 1e3
+            @test collect(line.get_ydata()) == values[:, 1]
+            @test values == original
         finally
             PyPlot.close(fig)
         end
@@ -83,6 +100,8 @@ import PyPlot
     @test_throws ArgumentError plt_ksphas([values], 1e-4; units=:T)
     @test_throws ArgumentError plt_bfield(values, 1e-4; units=:rad)
     @test_throws ArgumentError plt_bfield_com(values, values, 1e-4; units=:rad)
+    @test_throws ArgumentError plt_bfield(values, 0f0)
+    @test_throws ArgumentError plt_bfield_com(values, values, -1f-4)
     @test_throws AssertionError plt_bfield(values[:, 1:10], 1e-4)
     @test_throws DimensionMismatch plt_bfield_com(values, values[:, 1:9], 1e-4)
     @test_throws DimensionMismatch plt_kspha(values, 1e-4; times=[0.0, 1e-4])
@@ -110,9 +129,9 @@ end
             @test collect(line.get_xdata()) == samples.rf.t*1e3
         end
         @test collect(lines["Gx nominal [mT/m]"].get_ydata()) == samples.gx.A*1e3
-        @test collect(lines["h15 attached [mT/m³]"].get_ydata()) == samples.h15.A*1e3
+        @test collect(lines["h15 field [mT/m³]"].get_ydata()) == samples.h15.A*1e3
         @test haskey(lines, "B1 phase 2 [rad]")
-        @test haskey(lines, "h0 attached [mT]")
+        @test haskey(lines, "h0 field [mT]")
         @test occursin("units in legend", ax.get_ylabel())
         fig.canvas.draw()
     finally
@@ -127,7 +146,7 @@ end
         try
             ax = first(fig.axes)
             lines = Dict(line.get_label() => line for line in ax.get_lines())
-            @test collect(lines["h15 attached [mT/m³]"].get_ydata()) == sampled.h15*1e3
+            @test collect(lines["h15 field [mT/m³]"].get_ydata()) == sampled.h15*1e3
             @test collect(lines["Gx nominal [mT/m]"].get_xdata()) == sampled.seqd.t*1e3
             @test haskey(lines, "|B1| [μT]")
             @test occursin("units in legend", ax.get_ylabel())

@@ -1,12 +1,12 @@
 """
-    fig = plt_bfield(bfield::AbstractArray{<:Real, 2}, dt::Float64; kwargs...)
+    fig = plt_bfield(bfield::AbstractArray{<:Real, 2}, dt::Real; kwargs...)
 
 # Description
     Plots spherical-harmonic field coefficients through second or third order.
 
 # Arguments
 - `bfield::AbstractArray{<:Real, 2}`: `[nSample, nTerms]` field coefficients; 9 or 16 columns.
-- `dt::Float64`: sampling time in seconds.
+- `dt::Real`: sampling time in seconds.
 
 # Keywords
 - `units`: `:mT` (default) or `:T`; labels the supplied values without rescaling them.
@@ -17,8 +17,8 @@
 - `fontsize_label`: (`::Real`, `=7`) font size of labels
 - `fontsize_legend`: (`::Real`, `=7`) font size of legend
 - `fontsize_ticklabel`: (`::Real`, `=6`) font size of tick labels
-- `color_facecolor`: (`::String`, `="#1F1F1F"`) background color of the figure  
-- `color_label`: (`::String`, `="#CCCCCC"`) color of labels and tick labels
+- `color_facecolor`: (`::String`, `="#ffffff"`) background color of the figure
+- `color_label`: (`::String`, `="#000000"`) color of labels and tick labels
 - `linewidth`: (`::Real`, `=0.5`) line width
 - `ticklength`: (`::Real`, `=1.5`) length of ticks
 - `pad_label`: (`::Real`, `=2`) padding between labels and tick labels
@@ -34,7 +34,7 @@ julia> fig = plt_bfield(bfield, dt)
 """
 function plt_bfield(
     bfield::AbstractArray{<:Real, 2},
-    dt::Float64;
+    dt::Real;
     units              = :mT      ,
     times              = nothing  ,
     width              = 15       ,
@@ -42,8 +42,8 @@ function plt_bfield(
     fontsize_label     = 7        ,
     fontsize_legend    = 7        ,
     fontsize_ticklabel = 6        ,
-    color_facecolor    = "#1F1F1F",
-    color_label        = "#CCCCCC",
+    color_facecolor    = "#ffffff",
+    color_label        = "#000000",
     linewidth          = 0.5      ,
     ticklength         = 1.5      ,
     pad_label          = 2        ,
@@ -86,14 +86,14 @@ end
 
 
 """
-    fig = plt_bfield_com(bfield1::AbstractArray{<:Real, 2}, bfield2::AbstractArray{<:Real, 2}, dt::Float64; kwargs...)
+    fig = plt_bfield_com(bfield1::AbstractArray{<:Real, 2}, bfield2::AbstractArray{<:Real, 2}, dt::Real; kwargs...)
 
 # Description
     Compares spherical-harmonic field coefficients through second or third order.
 
 # Arguments
 - `bfield1`, `bfield2`: equally sized `[nSample, nTerms]` field coefficients; 9 or 16 columns.
-- `dt::Float64`: sampling time in seconds.
+- `dt::Real`: sampling time in seconds.
 
 # Keywords
 - `units`: `:mT` (default) or `:T`; labels values without rescaling them.
@@ -103,8 +103,8 @@ end
 - `fontsize_label`: (`::Real`, `=7`) font size of labels
 - `fontsize_legend`: (`::Real`, `=7`) font size of legend
 - `fontsize_ticklabel`: (`::Real`, `=6`) font size of tick labels
-- `color_facecolor`: (`::String`, `="#1F1F1F"`) background color of the figure  
-- `color_label`: (`::String`, `="#CCCCCC"`) color of labels and tick labels
+- `color_facecolor`: (`::String`, `="#ffffff"`) background color of the figure
+- `color_label`: (`::String`, `="#000000"`) color of labels and tick labels
 - `linewidth`: (`::Real`, `=0.5`) line width
 - `ticklength`: (`::Real`, `=1.5`) length of ticks
 - `pad_label`: (`::Real`, `=2`) padding between labels and tick labels
@@ -121,7 +121,7 @@ julia> fig = plt_bfield_com(bfield1, bfield2, dt)
 function plt_bfield_com(
     bfield1::AbstractArray{<:Real, 2},
     bfield2::AbstractArray{<:Real, 2},
-    dt::Float64;
+    dt::Real;
     units              = :mT      ,
     times              = nothing  ,
     width              = 15       ,
@@ -129,8 +129,8 @@ function plt_bfield_com(
     fontsize_label     = 7        ,
     fontsize_legend    = 7        ,
     fontsize_ticklabel = 6        ,
-    color_facecolor    = "#1F1F1F",
-    color_label        = "#CCCCCC",
+    color_facecolor    = "#ffffff",
+    color_label        = "#000000",
     linewidth          = 0.5      ,
     ticklength         = 1.5      ,
     pad_label          = 2        ,
