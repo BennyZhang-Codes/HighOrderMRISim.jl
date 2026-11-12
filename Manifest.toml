@@ -706,7 +706,7 @@ version = "0.2.0"
 deps = ["CUDA", "Functors", "ImageDistances", "ImageMorphology", "ImageQualityIndexes", "ImageTransformations", "Interpolations", "KernelAbstractions", "KomaMRI", "KomaMRIBase", "KomaMRICore", "KomaMRIFiles", "KomaMRIPlots", "LinearAlgebra", "MAT", "MRIBase", "Parameters", "Pkg", "ProgressMeter", "PyPlot", "Reexport", "Statistics", "ThreadsX"]
 path = "."
 uuid = "6437142c-3aa9-4303-9277-bb0012cca490"
-version = "0.2.2"
+version = "0.2.3"
 
 [[deps.HostCPUFeatures]]
 deps = ["BitTwiddlingConvenienceFunctions", "IfElse", "Libdl", "Preferences", "Static"]

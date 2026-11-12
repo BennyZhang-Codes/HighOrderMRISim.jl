@@ -1,7 +1,7 @@
 name = "HighOrderMRISim"
 uuid = "6437142c-3aa9-4303-9277-bb0012cca490"
 authors = ["Jinyuan Zhang <823573476@qq.com>"]
-version = "0.2.2"
+version = "0.2.3"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
