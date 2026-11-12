@@ -12,7 +12,7 @@ RegularizedLeastSquares = "1e9c538a-f78c-5de5-8ffb-0b6dbe892d23"
 
 [sources]
 HighOrderMRI = {url = "https://github.com/BennyZhang-Codes/HighOrderMRI.jl.git", rev = "245e4305ae1c8f7dfffef4f26ab1cb200d783ab0"}
-HighOrderMRISim = {url = "https://github.com/BennyZhang-Codes/HighOrderMRISim.jl.git", rev = "v0.2.1"}
+HighOrderMRISim = {url = "https://github.com/BennyZhang-Codes/HighOrderMRISim.jl.git", rev = "v0.2.2"}
 MRIGeometry = {url = "https://github.com/BennyZhang-Codes/HighOrderMRI.jl.git", rev = "245e4305ae1c8f7dfffef4f26ab1cb200d783ab0", subdir = "MRIGeometry"}
 
 [compat]

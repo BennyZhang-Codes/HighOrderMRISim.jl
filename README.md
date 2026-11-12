@@ -187,8 +187,8 @@ julia --startup-file=no --project=demo demo3D/Sim3D.jl
 julia --startup-file=no --project=demo demo3D/4_recon.jl
 ```
 
-Results are saved under `output/`. The 2D demo uses LowRank reconstruction; the
-3D demo uses kernel reconstruction.
+Results are saved under `output/`. Both demos default to Kernel reconstruction,
+with LowRank available as an option.
 
 See [local documentation builds](docs/README.md) and
 [package tests](test/README.md) for validation details.
