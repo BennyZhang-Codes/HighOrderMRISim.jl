@@ -1,6 +1,7 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 HighOrderMRISim = "6437142c-3aa9-4303-9277-bb0012cca490"
+MAT = "23992714-dd62-5051-b70f-ba57cb901cac"
 PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 
 [sources]
@@ -8,5 +9,6 @@ HighOrderMRISim = {path = ".."}
 
 [compat]
 Documenter = "1"
+MAT = "0.12"
 PyPlot = "2.11"
 julia = "1.12"

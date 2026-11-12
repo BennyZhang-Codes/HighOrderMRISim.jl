@@ -27,3 +27,4 @@ include("unit/test_readme_example.jl")
 @info "testing... plotting"
 include("unit/test_field_plots.jl")
 include("unit/test_spatial_plots.jl")
+include("unit/test_plot_style.jl")

@@ -15,8 +15,8 @@ the root Julia project. From the repository root, run:
 julia --startup-file=no --project=demo -e 'using Pkg; Pkg.instantiate()'
 ```
 
-The demo manifest pins HighOrderMRISim to `v0.2.1` (`9dce837`), including the
-CUDA coil-signal and CSM stride fixes. HighOrderMRI and its `MRIGeometry`
+The demo manifest pins HighOrderMRISim to `v0.2.2` (`a776bac`).
+HighOrderMRI and its `MRIGeometry`
 subpackage remain at the validated commit `245e430`. The pinned dependencies
 use public HTTPS repositories.
 
@@ -51,8 +51,8 @@ julia --startup-file=no --project=demo --threads=4 demo2D/Sim2D.jl
 julia --startup-file=no --project=demo --threads=4 demo2D/Recon2D.jl
 ```
 
-The default simulation writes `output/2d/2d-0000-physical.mat`. Reconstruction
-writes `output/2d/2d-0000-physical-lowrank-reconstruction.mat`.
+The default simulation writes `output/2d/2d-1111-physical.mat`. Reconstruction
+writes `output/2d/2d-1111-physical-kernel-reconstruction.mat`.
 
 ### 3D spiral
 
@@ -66,11 +66,13 @@ writes `output/3d/3d-1111-physical-kernel-reconstruction.mat`.
 
 | Demo | Native grid | Declared FOV | Simulation | Default operator |
 | --- | --- | --- | --- | --- |
-| 2D | 200 × 200 × 1 | 200 × 200 × 4 mm | Float64, `"0000"` | `HighOrderLowRankOp` |
+| 2D | 200 × 200 × 1 | 200 × 200 × 4 mm | Float32, `"1111"` | Cached `HighOrderKernelOp` |
 | 3D | 100 × 100 × 35 | 200 × 200 × 70 mm | Float32, `"1111"` | Blocked `HighOrderKernelOp` |
 
 Both scripts use CGNR with normalized sampling-density weights and zero L2
-regularization. Edit `operator` in the reconstruction script to select
+regularization. The 2D demo caps CGNR at 100 iterations to stop before the
+observed Float32 semiconvergence; the 3D demo retains 200 iterations. This is a
+dataset-specific safeguard, not a universal stopping rule. Edit `operator` in the reconstruction script to select
 `"lowrank"` or `"kernel"`. Pass a dataset path as the sole script argument to
 reconstruct a different export. LowRank requires centered Cartesian
 coordinates on the active Fourier axes and equal samples per acquired readout.
@@ -88,7 +90,7 @@ resulting file explicitly:
 
 ```bash
 julia --startup-file=no --project=demo --threads=4 demo2D/Recon2D.jl \
-    output/2d/2d-0000-density.mat
+    output/2d/2d-1111-density.mat
 julia --startup-file=no --project=demo --threads=8 demo3D/4_recon.jl \
     output/3d/3d-1111-density.mat
 ```
@@ -100,7 +102,7 @@ reference results, without fitted intensity or phase scaling, were:
 
 | Control | Magnitude NRMSE | Magnitude SSIM |
 | --- | --- | --- |
-| 2D spin density | 1.27% | 0.99188 |
+| 2D spin density | 1.43% | 0.99035 |
 | 3D spin density | 1.20% | 0.99520 |
 
 The reconstruction MAT file contains `image`, `rho`, `mode`, and `metrics`.

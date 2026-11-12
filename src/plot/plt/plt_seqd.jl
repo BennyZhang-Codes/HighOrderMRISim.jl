@@ -3,7 +3,7 @@
 """
     p = plt_seqd(hoseq::HO_Sequence; kwargs...)
 
-Plots sampled nominal gradients and attached high-order fields. Curves have
+Plots sampled nominal gradients and supplied high-order fields. Curves have
 different units, stated in their legends. No order selection or field summation
 is applied for display.
 
@@ -45,8 +45,8 @@ function plt_seqd(
     fontsize_label     = 7                                    ,
     fontsize_legend    = 7                                    ,
     fontsize_ticklabel = 6                                    ,
-    color_facecolor    = "#1F1F1F"                            ,
-    color_label        = "#CCCCCC"                            ,
+    color_facecolor    = "#ffffff"                            ,
+    color_label        = "#000000"                            ,
     linewidth          = 1.0                                  ,
     ticklength         = 1.5                                  ,
     pad_label          = 2                                    ,
@@ -72,7 +72,7 @@ function plt_seqd(
         name = Symbol("h", term)
         field = getproperty(sh, name)
         unit = replace(field.unit, "T" => "mT")
-        ax.plot(hoseqd.seqd.t*1e3, getproperty(hoseqd, name)*1e3, label="h$term attached [$unit]",
+        ax.plot(hoseqd.seqd.t*1e3, getproperty(hoseqd, name)*1e3, label="h$term field [$unit]",
             marker="o", color=field.color, markersize=marker_size, linewidth=linewidth)
     end
 
@@ -98,8 +98,8 @@ function plt_seqd(
     fontsize_label     = 7                                    ,
     fontsize_legend    = 7                                    ,
     fontsize_ticklabel = 6                                    ,
-    color_facecolor    = "#1F1F1F"                            ,
-    color_label        = "#CCCCCC"                            ,
+    color_facecolor    = "#ffffff"                            ,
+    color_label        = "#000000"                            ,
     linewidth          = 1.0                                  ,
     ticklength         = 1.5                                  ,
     pad_label          = 2                                    ,

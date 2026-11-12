@@ -52,8 +52,8 @@ function plt_traj(
     zlabel             = nothing  ,
     fontsize_label     = 7        ,
     fontsize_ticklabel = 6        ,
-    color_facecolor    = "#1F1F1F",
-    color_label        = "#CCCCCC",
+    color_facecolor    = "#ffffff",
+    color_label        = "#000000",
     linewidth          = 0.5      ,
     ticklength         = 1.5      ,
     pad_label          = 2        ,
@@ -71,6 +71,9 @@ function plt_traj(
     if projection == :xyz
         ax = fig.add_subplot(1, 1, 1, projection="3d")
         ax.set_box_aspect((1, 1, 1))
+        for axis in (ax.xaxis, ax.yaxis, ax.zaxis)
+            axis.set_pane_color(color_facecolor)
+        end
     else
         ax = fig.add_subplot(1, 1, 1)
         ax.set_aspect("equal", "box")
@@ -104,8 +107,8 @@ function plt_traj(
     fontsize_label     = 7        ,
     fontsize_legend    = 7        ,
     fontsize_ticklabel = 6        ,
-    color_facecolor    = "#1F1F1F",
-    color_label        = "#CCCCCC",
+    color_facecolor    = "#ffffff",
+    color_label        = "#000000",
     linewidth          = 0.5      ,
     ticklength         = 1.5      ,
     pad_label          = 2        ,
@@ -126,6 +129,9 @@ function plt_traj(
     if projection == :xyz
         ax = fig.add_subplot(1, 1, 1, projection="3d")
         ax.set_box_aspect((1, 1, 1))
+        for axis in (ax.xaxis, ax.yaxis, ax.zaxis)
+            axis.set_pane_color(color_facecolor)
+        end
     else
         ax = fig.add_subplot(1, 1, 1)
         ax.set_aspect("equal", "box")

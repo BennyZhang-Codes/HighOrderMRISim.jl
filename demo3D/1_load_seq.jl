@@ -84,5 +84,6 @@ end
 # ------------------------------------------------------------
 # 5. Plot the final sequence
 # ------------------------------------------------------------
-demo_plots && plt_seq(hoseq)
+# Explicit styling also applies in the release-pinned demo environment.
+demo_plots && plt_seq(hoseq; color_facecolor="#ffffff", color_label="#000000")
 demo_plots && plot_seq(hoseq.SEQ)

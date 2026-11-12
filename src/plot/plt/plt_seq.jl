@@ -3,8 +3,8 @@
 """
     p = plt_seq(hoseq::HO_Sequence; kwargs...)
 
-Plots nominal gradients and attached high-order field waveforms. Curves have
-different units, stated in their legends; the attached fields are not an
+Plots nominal gradients and supplied high-order field waveforms. Curves have
+different units, stated in their legends; the supplied fields are not an
 order-selected effective field and are not added to the nominal gradients.
 
 # Arguments
@@ -42,8 +42,8 @@ function plt_seq(
       fontsize_label     = 7          ,
       fontsize_legend    = 7          ,
       fontsize_ticklabel = 6          ,
-      color_facecolor    = "#1F1F1F"  ,
-      color_label        = "#CCCCCC"  ,
+      color_facecolor    = "#ffffff"  ,
+      color_label        = "#000000"  ,
       linewidth          = 1.0        ,
       ticklength         = 1.5        ,
       pad_label          = 2          ,
@@ -87,7 +87,7 @@ function plt_seq(
         name = Symbol("h", term)
         field, sample = getproperty(sh, name), getproperty(samples, name)
         unit = replace(field.unit, "T" => "mT")
-        ax.plot(sample.t*1e3, sample.A*1e3, label="h$term attached [$unit]", color=field.color, linewidth=linewidth)
+        ax.plot(sample.t*1e3, sample.A*1e3, label="h$term field [$unit]", color=field.color, linewidth=linewidth)
     end
 
     ax.set_xlabel(xlabel, fontsize=fontsize_label, color=color_label, labelpad=pad_label)

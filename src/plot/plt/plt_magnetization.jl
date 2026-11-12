@@ -50,8 +50,8 @@ function plt_magnetization(
     height             = 20         ,  
     fontsize_label     = 7          ,
     fontsize_ticklabel = 6          ,
-    color_facecolor    = "#1F1F1F"  ,
-    color_label        = "#CCCCCC"  ,
+    color_facecolor    = "#ffffff"  ,
+    color_label        = "#000000"  ,
     linewidth          = 1.0        ,
     ticklength         = 1.5        ,
     pad_label          = 2          ,
@@ -105,6 +105,7 @@ function plt_magnetization(
             cmap=cmap, vmin=cmin_key, vmax=cmax_key
         )
         cb = fig.colorbar(sc, ax=ax, shrink=0.6)
+        cb.ax.set_facecolor(color_facecolor)
         cb.ax.set_title("[$(String(key))]", fontsize=fontsize_ticklabel, color=color_label, pad=pad_label)
         cb.ax.tick_params(color=color_label, labelcolor=color_label, labelsize=fontsize_ticklabel,length=ticklength, width=linewidth, pad=pad_labeltick)
         cb.outline.set_visible(false)
@@ -141,6 +142,7 @@ function plt_magnetization(
             cmap=cmap, vmin=cmin_key, vmax=cmax_key
         )
         cb = fig.colorbar(sc, ax=ax, shrink=0.6)
+        cb.ax.set_facecolor(color_facecolor)
         cb.ax.set_title("[$(String(key))]", fontsize=fontsize_ticklabel, color=color_label, pad=pad_label)
         cb.ax.tick_params(color=color_label, labelcolor=color_label, labelsize=fontsize_ticklabel,length=ticklength, width=linewidth, pad=pad_labeltick)
         cb.outline.set_visible(false)

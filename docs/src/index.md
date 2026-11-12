@@ -10,9 +10,9 @@ and a spin phantom. Image reconstruction is a separate step provided by
 
 | Path | Typical use |
 | --- | --- |
-| CPU array | Small reference problems and validation without CUDA hardware |
+| CPU array | Small-scale simulations without a GPU |
 | Single-GPU CUDA | Static high-order simulations with one device |
-| Multi-GPU CUDA | Spin partitioning for larger problems or repeated simulations |
+| Multi-GPU CUDA | Spin partitioning for larger simulations |
 
 All paths use the same field-order selection and RF model. The CUDA paths
 change how the calculation is executed, not which field terms are included.

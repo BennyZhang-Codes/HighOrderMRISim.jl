@@ -5,7 +5,7 @@ import RegularizedLeastSquares as RLS
 import HighOrderMRI: AbstractNFFTs
 import NFFT, NonuniformFFTs
 
-function reconstruct(dataset; operator="lowrank", gpus=[0], iterations=200, rank=30)
+function reconstruct(dataset; operator="kernel", gpus=[0], iterations=200, rank=30)
     d = MAT.matread(dataset)
     d["schema_version"] == 1 || error("Unsupported demo data schema.")
     dims = Tuple(Int.(vec(d["dimensions"])))

@@ -78,6 +78,19 @@ requests fail if CUDA or the requested devices are unavailable.
 | `"coil_combination"` | `"gemm"` | Uses cuBLAS on the CUDA kernel path. `"reduction"`, `"fused_warp"`, and `"fused_tiled"` are alternative reductions. |
 | `"precision"` | `"f32"` | Selects `"f32"` or `"f64"`. Keep it fixed when comparing backends. |
 
+`"implementation"` and `"coil_combination"` are HighOrderMRISim options, not
+native KomaMRI execution selectors. `"precision"` is inherited from KomaMRI.
+The high-order kernels extend KomaMRI's simulation workflow; they do not enable
+high-order fields in a native `Sequence` by themselves.
+
+Keep `"gemm"` unless a workload-specific measurement supports another choice.
+It was fastest in the tested 32-coil RTX 3090 workloads, but no strategy has a
+universal speed or memory advantage. Fused modes can reduce ADC-state storage,
+especially when RF has no ADC samples, at a throughput cost in those tests.
+Compare complete warmed simulations at the same precision, spin/coil counts,
+and block settings; measure peak memory separately. Alternative reductions do
+not add physical effects or improve nominal accuracy.
+
 Multi-GPU simulation partitions spins, not readouts. Each partition sees the
 complete RF and relaxation history. The simulator sums the partial signals in
 device-list order, so small floating-point differences from a single GPU are

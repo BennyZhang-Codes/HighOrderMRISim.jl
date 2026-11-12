@@ -19,8 +19,8 @@ execution, with 2D and 3D spiral demos linking simulation to reconstruction thro
 - Time-varying fields through third-order spherical harmonics, with
   selectable field orders during free precession.
 - KomaMRI sequence integration with measured or user-defined field waveforms.
-- Multi-coil signal reception with coil-sensitivity maps, T1/T2 relaxation,
-  and static B0 off-resonance.
+- Multi-coil signal reception with coil-sensitivity maps, retaining KomaMRI's
+  T1/T2 relaxation and static B0 off-resonance model.
 - CPU and CUDA-accelerated single- and multi-GPU simulation in Float32
   and Float64.
 - CUDA-accelerated reconstruction through
@@ -151,8 +151,7 @@ signal_gpu = simulate(obj, hoseq, Scanner(); sim_params, array_type=CuArray, gpu
 ```
 
 Use the zero-based device numbers listed by `CUDA.devices()`, or `gpus=[0, 1]`
-for two GPUs. See the [plotting guide](docs/src/guide/plotting.md) for sequence,
-field, trajectory, and phantom figures.
+for two GPUs.
 
 ### Run the demos
 
@@ -187,8 +186,8 @@ julia --startup-file=no --project=demo demo3D/Sim3D.jl
 julia --startup-file=no --project=demo demo3D/4_recon.jl
 ```
 
-Results are saved under `output/`. The 2D demo uses LowRank reconstruction; the
-3D demo uses kernel reconstruction.
+Results are saved under `output/`. Both demos default to Kernel reconstruction,
+with LowRank available as an option.
 
 See [local documentation builds](docs/README.md) and
 [package tests](test/README.md) for validation details.

@@ -19,8 +19,8 @@
 - `pad_labeltick`: (`::Integer`, `=2`) padding between tick labels and the colorbar
 - `linewidth`: (`::Real`, `=0.5`) width of the colorbar's outline
 - `ticklength`: (`::Real`, `=1.5`) length of the colorbar's ticks
-- `color_facecolor`: (`::String`, `="#1F1F1F"`) background color of the figure
-- `color_label`: (`::String`, `="#CCCCCC"`) color of the labels
+- `color_facecolor`: (`::String`, `="#ffffff"`) background color of the figure
+- `color_label`: (`::String`, `="#000000"`) color of the labels
 
 # Returns
 - `Figure`: a PyObject representing the figure
@@ -44,8 +44,8 @@ function plt_B0map(
     pad_labeltick      = 2        ,
     linewidth          = 0.5      ,
     ticklength         = 1.5      ,
-    color_facecolor    = "#1F1F1F",
-    color_label        = "#CCCCCC",
+    color_facecolor    = "#ffffff",
+    color_label        = "#000000",
     )
     fig = plt.figure(figsize=(width/0.75/2.53999863, height/0.9/2.53999863), facecolor=color_facecolor)
 
@@ -59,11 +59,12 @@ function plt_B0map(
     ai = ax.imshow(b0map, cmap=cmap, vmin=vmin, vmax=vmax)
 
     cb = fig.colorbar(ai, cax=cax)
+    cb.ax.set_facecolor(color_facecolor)
     cb.set_label("ΔB₀ [Hz]", color=color_label, size=fontsize_ticklabel)
     cb.ax.tick_params(color=color_label, labelcolor=color_label, labelsize=fontsize_ticklabel,length=ticklength, width=linewidth, pad=pad_labeltick)
     cb.outline.set_visible(false)
     # cb.set_ticks([-120.0, -60.0, 0.0, 60.0, 120.0])
     cb.update_ticks()
-    fig.tight_layout(pad=0, h_pad=0, w_pad=0)
+    # Explicit axes positions already define this layout.
     return fig
 end

@@ -15,8 +15,8 @@ function plt_grid(grid::Array{<:Real,4}; step::Int=4, space::Symbol=:xyz,
     fontsize_title     = 10       ,
     fontsize_label     = 8        ,
     fontsize_tick      = 6        ,
-    color_facecolor    = "#1F1F1F",
-    color_label        = "#CCCCCC",
+    color_facecolor    = "#ffffff",
+    color_label        = "#000000",
     plot_reference     = true     )
     grid_sub = grid[1:step:end, 1:step:end, 1:step:end, :]
     coords = reshape(grid_sub, :, 3)
@@ -31,9 +31,9 @@ function plt_grid(grid::Array{<:Real,4}; step::Int=4, space::Symbol=:xyz,
     ax.yaxis.line.set_color(color_label)
     ax.zaxis.line.set_color(color_label)
 
-    ax.xaxis.pane.set_color(color_label)
-    ax.yaxis.pane.set_color(color_label)
-    ax.zaxis.pane.set_color(color_label)
+    ax.xaxis.set_pane_color(color_facecolor)
+    ax.yaxis.set_pane_color(color_facecolor)
+    ax.zaxis.set_pane_color(color_facecolor)
     ax.xaxis.pane.set_edgecolor(color_label)
     ax.yaxis.pane.set_edgecolor(color_label)
     ax.zaxis.pane.set_edgecolor(color_label)
